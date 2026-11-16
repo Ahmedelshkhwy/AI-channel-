@@ -1,0 +1,30 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;900&display=block">
+<style>*{margin:0;box-sizing:border-box}body{font-family:Cairo,sans-serif;color:#fff;overflow:hidden}
+.bgd{background:radial-gradient(circle at 30% 20%,#1b1447,#070b1a 70%)}
+.wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:60px}
+.t1{font-weight:900;font-size:150px;line-height:1.1}.t2{font-weight:900;font-size:150px;line-height:1.1;background:linear-gradient(90deg,#fbbf24,#fde68a);-webkit-background-clip:text;color:transparent}
+.t3{font-weight:600;font-size:64px;color:#a5f3fc;margin-top:14px;direction:rtl}</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset=".55" stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/></linearGradient>
+<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<clipPath id="cc"><circle cx="256" cy="256" r="150"/></clipPath>
+<symbol id="ring" viewBox="0 0 512 512">
+ <g filter="url(#glow)" fill="none" stroke-linecap="round">
+  <path d="M256 76 A180 180 0 1 1 100 346" stroke="url(#rg)" stroke-width="44"/>
+  <path d="M100 346 A180 180 0 0 1 96 174" stroke="#22d3ee" stroke-width="10" stroke-dasharray="2 30"/>
+  <path d="M112 150 A180 180 0 0 1 222 79" stroke="#22d3ee" stroke-width="10"/>
+  <circle cx="88" cy="262" r="15" fill="#070b1a" stroke="#22d3ee" stroke-width="8"/>
+  <circle cx="110" cy="152" r="15" fill="#070b1a" stroke="#22d3ee" stroke-width="8"/>
+  <circle cx="226" cy="78" r="15" fill="#22d3ee" stroke="none"/>
+ </g></symbol>
+<symbol id="spark" viewBox="0 0 512 512"><path filter="url(#glow)" d="M256 176 C264 226 286 248 336 256 C286 264 264 286 256 336 C248 286 226 264 176 256 C226 248 248 226 256 176Z" fill="#fbbf24"/></symbol>
+</defs></svg>
+<div id="root"></div>
+<script>
+const v=new URLSearchParams(location.search).get('v');const r=document.getElementById('root');
+if(v==='icon'){document.body.className='bgd';r.innerHTML='<div class="wrap" style="width:1024px;height:1024px"><svg width="820" height="820"><use href="#ring"/><use href="#spark"/></svg></div>';}
+if(v==='mark'){r.innerHTML='<div class="wrap" style="width:1024px;height:1024px"><svg width="900" height="900"><use href="#ring"/><use href="#spark"/></svg></div>';}
+if(v==='avatar'){document.body.className='bgd';r.innerHTML='<div class="wrap" style="width:1024px;height:1024px"><svg width="900" height="900" viewBox="0 0 512 512"><image href="assets/face.png" x="106" y="106" width="300" height="300" clip-path="url(#cc)"/><use href="#ring" width="512" height="512"/></svg></div>';}
+if(v==='full'){document.body.className='bgd';r.innerHTML='<div class="wrap" style="width:2000px;height:900px"><div><div class="t1">ذكاء اصطناعي</div><div class="t2">من الصفر</div><div class="t3">مع <span style="direction:ltr;display:inline-block">Dr Ahmed</span></div></div><svg width="560" height="560"><use href="#ring"/><use href="#spark"/></svg></div>';}
+</script></body></html>
