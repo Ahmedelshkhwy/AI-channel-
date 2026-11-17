@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;900&family=JetBrains+Mono:wght@500;700&display=block">
+<style>
+  * { margin:0; box-sizing:border-box; }
+  html, body { width:1080px; height:1920px; overflow:hidden; background:#050816; font-family:Cairo, sans-serif; color:#fff; }
+  canvas#gl { position:absolute; inset:0; }
+  #vig { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,.6) 100%); }
+  #stage { position:absolute; inset:0; perspective:1900px; overflow:hidden; }
+  .abs { position:absolute; left:0; top:0; }
+  .k { position:absolute; left:0; right:0; text-align:center; font-weight:900; line-height:1.15; opacity:0; visibility:hidden; }
+  .glow { text-shadow:0 0 30px rgba(34,211,238,.75), 0 0 80px rgba(99,102,241,.6); }
+  .gold { background:linear-gradient(90deg,#fbbf24,#fde68a); -webkit-background-clip:text; color:transparent; filter:drop-shadow(0 0 26px rgba(251,191,36,.55)); }
+  .grad { background:linear-gradient(90deg,#22d3ee,#818cf8,#c084fc); -webkit-background-clip:text; color:transparent; filter:drop-shadow(0 0 30px rgba(99,102,241,.7)); }
+  .red { color:#fb7185; text-shadow:0 0 40px rgba(244,63,94,.7); }
+  .mono { font-family:"JetBrains Mono", monospace; direction:ltr; }
+  /* panels */
+  .panel { position:absolute; left:0; top:0; transform-origin:50% 50%; opacity:0; visibility:hidden; will-change:transform; }
+  .code { width:980px; border-radius:30px; background:linear-gradient(160deg, rgba(17,24,58,.96), rgba(9,13,36,.97)); border:2px solid rgba(129,140,248,.45); box-shadow:0 40px 100px rgba(0,0,0,.6), 0 0 60px rgba(99,102,241,.25); overflow:hidden; direction:ltr; }
+  .code .bar { display:flex; align-items:center; gap:12px; padding:18px 26px; border-bottom:1px solid rgba(129,140,248,.25); background:rgba(255,255,255,.03); }
+  .code .bar i { width:16px; height:16px; border-radius:50%; background:#334155; }
+  .code .bar b { margin-left:14px; font:700 26px "JetBrains Mono"; color:#a5b4fc; }
+  .code .bar span { margin-left:auto; font:600 24px Cairo; color:#67e8f9; direction:rtl; }
+  .code .body { padding:22px 0 26px; }
+  .ln { display:flex; gap:20px; padding:5px 30px 5px 0; font:500 29px/1.55 "JetBrains Mono", Cairo; color:#cbd5e1; position:relative; }
+  .ln u { text-decoration:none; width:74px; text-align:right; color:#475569; flex:none; }
+  .ln p { flex:1; white-space:pre-wrap; word-break:break-word; }
+  .ln.ar p { direction:rtl; text-align:right; font-family:Cairo, "JetBrains Mono"; font-weight:600; font-size:31px; }
+  .ln .hl { position:absolute; inset:0; background:linear-gradient(90deg, rgba(34,211,238,.28), rgba(129,140,248,.2)); border-left:6px solid #22d3ee; opacity:0; }
+  .c-k { color:#c084fc; } .c-s { color:#fde68a; } .c-f { color:#67e8f9; } .c-c { color:#64748b; } .c-n { color:#fb923c; } .c-v { color:#f0abfc; }
+  .ui { border-radius:34px; background:#0b1220; border:2px solid rgba(34,211,238,.45); box-shadow:0 40px 100px rgba(0,0,0,.6), 0 0 60px rgba(34,211,238,.2); overflow:hidden; }
+  .ui canvas { display:block; }
+  .tag { position:absolute; left:0; top:0; opacity:0; visibility:hidden; white-space:nowrap; padding:14px 34px; border-radius:999px; font-weight:900; font-size:46px; color:#050816; background:linear-gradient(90deg,#22d3ee,#a78bfa); box-shadow:0 0 50px rgba(34,211,238,.7); }
+  .tag.vio { background:linear-gradient(90deg,#f0abfc,#fbbf24); box-shadow:0 0 50px rgba(240,171,252,.6); }
+  .card { position:absolute; left:0; top:0; opacity:0; visibility:hidden; border-radius:28px; padding:26px 34px; background:rgba(15,23,60,.92); border:2px solid rgba(129,140,248,.5); font-weight:900; font-size:44px; display:flex; align-items:center; gap:24px; box-shadow:0 20px 60px rgba(0,0,0,.5); white-space:nowrap; }
+  .card svg { width:64px; height:64px; flex:none; }
+  .card.no { border-color:rgba(251,113,133,.7); } .card.ok { border-color:rgba(52,211,153,.7); }
+  /* hud */
+  #hud { position:absolute; left:0; right:0; top:70px; height:150px; opacity:0; }
+  #hud img { position:absolute; right:44px; top:0; width:132px; height:132px; border-radius:50%; }
+  #hud .nm { position:absolute; right:196px; top:14px; font-weight:900; font-size:40px; }
+  #hud .ep { position:absolute; right:196px; top:76px; font-weight:600; font-size:30px; color:#a5f3fc; }
+  #road { position:absolute; left:44px; top:44px; display:flex; gap:12px; direction:ltr; }
+  #road i { width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.14); }
+  #road i.on { background:#22d3ee; box-shadow:0 0 22px #22d3ee; }
+  #beams { position:absolute; inset:0; }
+  #flash { position:absolute; inset:0; opacity:0; background:radial-gradient(circle at 50% 45%, #fff, #67e8f9 30%, #6366f1 70%); }
+  .chip { position:absolute; left:0; top:0; opacity:0; visibility:hidden; padding:16px 40px; border-radius:999px; font:700 50px "JetBrains Mono"; direction:ltr; background:rgba(15,23,60,.9); border:2px solid rgba(129,140,248,.6); }
+  .snip { position:absolute; left:0; top:0; opacity:0; white-space:nowrap; font-weight:600; font-size:30px; color:#a5b4fc; }
+  .bub { position:absolute; left:0; top:0; opacity:0; visibility:hidden; white-space:nowrap; padding:14px 30px; border-radius:22px; font-weight:900; font-size:40px; background:rgba(244,63,94,.16); border:2px dashed #fb7185; color:#fecdd3; }
+  .col { position:absolute; top:1180px; width:440px; opacity:0; visibility:hidden; }
+  .col h4 { font-size:56px; font-weight:900; margin-bottom:18px; display:flex; align-items:center; gap:16px; }
+  .col div { font-size:38px; font-weight:600; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.12); }
+  .rstep { position:absolute; right:150px; opacity:0; visibility:hidden; display:flex; align-items:center; gap:26px; font-weight:900; font-size:44px; white-space:nowrap; }
+  .rstep i { font-style:normal; width:70px; height:70px; border-radius:50%; display:grid; place-items:center; font-size:36px; background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.25); }
+  .rstep.on i { background:linear-gradient(135deg,#22d3ee,#6366f1); color:#050816; border-color:transparent; box-shadow:0 0 40px #22d3ee; }
+  .rstep.done i { background:#34d399; color:#050816; border-color:transparent; }
+  .half { position:absolute; top:1080px; width:480px; height:520px; border-radius:34px; padding:34px; opacity:0; visibility:hidden; background:rgba(15,23,60,.92); border:2px solid rgba(34,211,238,.5); }
+  .half h5 { font:700 52px "JetBrains Mono"; direction:ltr; text-align:center; margin-bottom:8px; }
+  .half small { display:block; text-align:center; font-size:32px; font-weight:600; color:#a5f3fc; line-height:1.4; }
+  #btn { position:absolute; left:0; right:0; top:1330px; text-align:center; opacity:0; }
+  #btn span { display:inline-block; padding:22px 90px; border-radius:999px; font-weight:900; font-size:70px; color:#050816; background:linear-gradient(90deg,#22d3ee,#a78bfa); box-shadow:0 0 70px rgba(34,211,238,.7); }
+  .gate { position:absolute; left:0; top:0; opacity:0; visibility:hidden; width:860px; border-radius:26px; padding:22px 30px; background:rgba(15,23,60,.92); border:2px solid rgba(129,140,248,.5); font-weight:900; font-size:40px; display:flex; align-items:center; gap:22px; }
+  .gate i { font-style:normal; width:64px; height:64px; border-radius:18px; display:grid; place-items:center; font:700 34px "JetBrains Mono"; background:rgba(255,255,255,.1); flex:none; }
+  .gate.pass { border-color:#34d399; box-shadow:0 0 40px rgba(52,211,153,.35); } .gate.pass i { background:#34d399; color:#050816; }
+  .node { position:absolute; left:0; top:0; opacity:0; visibility:hidden; width:230px; text-align:center; font-weight:900; font-size:34px; line-height:1.25; }
+  .node i { font-style:normal; display:grid; place-items:center; width:84px; height:84px; margin:0 auto 12px; border-radius:50%; font:700 38px "JetBrains Mono"; background:rgba(255,255,255,.08); border:3px solid rgba(255,255,255,.25); }
+  .node.on i { background:linear-gradient(135deg,#22d3ee,#6366f1); color:#050816; border-color:transparent; box-shadow:0 0 44px #22d3ee; }
+  .sum { position:absolute; top:640px; width:480px; opacity:0; visibility:hidden; border-radius:34px; padding:34px; background:rgba(15,23,60,.92); border:2px solid rgba(34,211,238,.5); text-align:center; }
+  .sum h5 { font:700 56px "JetBrains Mono"; direction:ltr; margin-bottom:18px; } .sum div { font-size:50px; font-weight:900; padding:10px 0; opacity:0; }
+  #split { position:absolute; left:0; right:0; top:958px; height:5px; background:linear-gradient(90deg, transparent, #67e8f9, #fff, #c4b5fd, transparent); box-shadow:0 0 40px #67e8f9; opacity:0; transform-origin:50% 50%; }
+  #dark { position:absolute; left:0; right:0; top:960px; bottom:0; background:linear-gradient(180deg, rgba(0,0,0,.72), rgba(0,0,0,.5)); opacity:0; }
+  .keyic { position:absolute; left:0; top:0; opacity:0; visibility:hidden; }
+  .tbl { width:980px; border-radius:26px; overflow:hidden; background:rgba(12,18,48,.95); border:2px solid rgba(251,191,36,.55); box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 50px rgba(251,191,36,.18); }
+  .tbl .tab { display:flex; gap:12px; padding:14px 22px; background:rgba(251,191,36,.08); border-bottom:1px solid rgba(251,191,36,.3); font:700 28px "JetBrains Mono"; color:#fde68a; direction:ltr; }
+  .tbl .tab b { padding:6px 18px; border-radius:12px 12px 0 0; background:rgba(251,191,36,.18); }
+  .tbl .tab span { margin-left:auto; font:600 24px Cairo; color:#94a3b8; direction:rtl; }
+  .tbl .r { display:grid; grid-template-columns: 2.1fr 2.1fr 1.3fr 1fr; position:relative; }
+  .tbl .r div { padding:16px 18px; font-weight:600; font-size:28px; border-left:1px solid rgba(255,255,255,.08); border-bottom:1px solid rgba(255,255,255,.08); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tbl .r.h div { font-weight:900; font-size:30px; color:#fde68a; background:rgba(255,255,255,.04); }
+  .tbl .colhl { position:absolute; top:60px; bottom:0; background:rgba(34,211,238,.18); border:3px solid #22d3ee; border-radius:8px; opacity:0; pointer-events:none; }
+  .tbl .rowhl { position:absolute; left:0; right:0; height:64px; background:rgba(251,191,36,.16); border:3px solid #fbbf24; border-radius:8px; opacity:0; pointer-events:none; }
+  .admin { width:900px; border-radius:30px; overflow:hidden; background:#0b1220; border:2px solid rgba(34,211,238,.45); box-shadow:0 30px 80px rgba(0,0,0,.55); }
+  .admin .top { display:flex; align-items:center; gap:16px; padding:20px 28px; border-bottom:1px solid rgba(255,255,255,.1); font-weight:900; font-size:36px; }
+  .admin .top small { margin-right:auto; font-size:24px; font-weight:600; color:#94a3b8; }
+  .admin .it { display:flex; align-items:center; gap:18px; padding:18px 28px; border-bottom:1px solid rgba(255,255,255,.06); opacity:0; }
+  .admin .it i { width:16px; height:16px; border-radius:50%; flex:none; }
+  .admin .it b { height:16px; border-radius:8px; background:rgba(255,255,255,.22); display:block; }
+  .file { position:absolute; left:0; top:0; opacity:0; visibility:hidden; display:flex; flex-direction:column; align-items:center; gap:10px; font:700 34px "JetBrains Mono"; color:#cbd5e1; }
+  .upd { position:absolute; left:0; top:0; opacity:0; visibility:hidden; padding:10px 26px; border-radius:999px; font-weight:900; font-size:36px; background:rgba(34,211,238,.16); border:2px solid #22d3ee; white-space:nowrap; }
+</style>
+</head>
+<body>
+<canvas id="gl" width="1080" height="1920"></canvas>
+<div id="vig"></div>
+<svg id="beams" viewBox="0 0 1080 1920"><defs><filter id="bg"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g id="bgroup" filter="url(#bg)"></g></svg>
+<div id="dark"></div><div id="split"></div><div id="stage"></div>
+<div id="hud"><div id="road"></div><img src="assets/logo-avatar.png"><div class="nm">ذكاء اصطناعي من الصفر</div><div class="ep">الحلقة 2 · <span class="mono">Database</span></div></div>
+<div id="btn"><span>تابعني</span></div>
+<div id="flash"></div>
+
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// ---------- timing ----------
+const D = [10.84, 18.13, 15.57, 9.4, 15.96, 17.48, 16.2, 17.08, 13.01, 4.44], S = []; let acc = 1.0;
+for (const d of D) { S.push(acc); acc += d + 0.35; }
+const TOTAL = Math.round((acc + 2.2) * 10) / 10; window.TOTAL = TOTAL; window.STARTS = S;
+const V = (i, x) => S[i] + x;
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const pr = (t, a, b) => clamp((t - a) / (b - a));
+const eo = x => 1 - Math.pow(1 - x, 3), ei = x => x * x * x, eio = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9, c3 = c + 1; return x <= 0 ? 0 : 1 + c3 * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const lerp = (a, b, x) => a + (b - a) * x;
+const win = (t, a, b, fi = .4, fo = .35) => (t < a || t > b) ? 0 : Math.min(eo(pr(t, a, a + fi)), 1 - ei(pr(t, b - fo, b)));
+let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const TEAL = 0x22d3ee, VIO = 0x7c5cff, PUR = 0xa855f7;
+
+await document.fonts.load('900 100px Cairo'); await document.fonts.load('600 40px Cairo'); await document.fonts.load('500 30px "JetBrains Mono"'); await document.fonts.load('700 30px "JetBrains Mono"'); await document.fonts.ready;
+const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
+const pad3 = n => String(n).padStart(3, '0');
+const sanadF = await Promise.all(Array.from({ length: 148 }, (_, i) => loadImg(`fr/sanad/${pad3(i + 1)}.jpg`)));
+const askF = await Promise.all(Array.from({ length: 228 }, (_, i) => loadImg(`fr/ask/${pad3(i + 1)}.jpg`)));
+
+// ---------- three background ----------
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gl'), antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(1080, 1920, false);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x050816); scene.fog = new THREE.FogExp2(0x050816, 0.02);
+const camera = new THREE.PerspectiveCamera(50, 1080 / 1920, 0.1, 300); scene.add(camera);
+scene.add(new THREE.AmbientLight(0x8899ff, 0.9));
+const L1 = new THREE.PointLight(TEAL, 120, 60); L1.position.set(5, 6, 6); camera.add(L1);
+const L2 = new THREE.PointLight(PUR, 120, 60); L2.position.set(-6, -4, 4); camera.add(L2);
+const composer = new EffectComposer(renderer); composer.setSize(1080, 1920);
+composer.addPass(new RenderPass(scene, camera)); const bloomPass = new UnrealBloomPass(new THREE.Vector2(540, 960), 0.8, 0.6, 0.9); composer.addPass(bloomPass); composer.addPass(new OutputPass());
+const hot = (c, k = 2.2) => new THREE.Color(c).multiplyScalar(k);
+function edged(geo, color, body = 0x1a2670) { const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: body, metalness: .55, roughness: .3, emissive: body, emissiveIntensity: .35, transparent: true })); m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: hot(color), transparent: true }))); return m; }
+{ const n = 2400, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = (rnd() - .5) * 70; pos[i * 3 + 1] = (rnd() - .5) * 110; pos[i * 3 + 2] = -5 - rnd() * 90; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x9fb4ff, size: .1, transparent: true, opacity: .8 }))); }
+const floaters = []; { const geos = [new THREE.IcosahedronGeometry(.8, 0), new THREE.BoxGeometry(1, 1, 1), new THREE.OctahedronGeometry(.8), new THREE.TorusGeometry(.6, .2, 10, 24)];
+  for (let i = 0; i < 12; i++) { const m = edged(geos[i % 4], [TEAL, VIO, PUR][i % 3]); m.position.set((rnd() - .5) * 26, (rnd() - .5) * 40, -10 - rnd() * 30); m.scale.setScalar(.6 + rnd()); m.userData = { rx: rnd() - .5, ry: rnd() - .5, y: m.position.y, ph: rnd() * 6 }; scene.add(m); floaters.push(m); } }
+// the LLM core
+const core = new THREE.Group(); scene.add(core);
+const coreWire = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1, 1)), new THREE.LineBasicMaterial({ color: hot(TEAL) })); core.add(coreWire);
+const coreIn = new THREE.Mesh(new THREE.IcosahedronGeometry(.62, 2), new THREE.MeshBasicMaterial({ color: 0x6d4dff })); core.add(coreIn);
+const coreDots = []; for (let i = 0; i < 40; i++) { const d = new THREE.Mesh(new THREE.SphereGeometry(.035, 8, 8), new THREE.MeshBasicMaterial({ color: hot(0xfde68a, 1.6) })); const v = new THREE.Vector3(rnd() - .5, rnd() - .5, rnd() - .5).normalize().multiplyScalar(1); d.position.copy(v); core.add(d); coreDots.push(d); }
+const orbA = new THREE.Mesh(new THREE.TorusGeometry(1.45, .014, 8, 120), new THREE.MeshBasicMaterial({ color: hot(0x67e8f9, 1.5) })); core.add(orbA);
+const orbB = new THREE.Mesh(new THREE.TorusGeometry(1.7, .012, 8, 120), new THREE.MeshBasicMaterial({ color: hot(0xc4b5fd, 1.5) })); core.add(orbB);
+const fence = new THREE.Mesh(new THREE.TorusGeometry(2.1, .05, 12, 160), new THREE.MeshBasicMaterial({ color: hot(0x34d399, 1.8), transparent: true })); scene.add(fence);
+const PX = 2 * 10 * Math.tan(25 * Math.PI / 180) / 1920;       // world units per pixel at z=0, camera z=10
+function setCore(px, py, s, t) { core.visible = s > .001; core.position.set((px - 540) * PX, -(py - 960) * PX, 0); core.scale.setScalar(s); coreWire.rotation.set(t * .3, t * .45, 0); coreIn.scale.setScalar(1 + Math.sin(t * 3) * .06); orbA.rotation.set(1.2, t * .6, 0); orbB.rotation.set(-1, -t * .45, .5); }
+
+// server (backend) and database objects
+const srv = new THREE.Group(); scene.add(srv); const srvParts = [];
+for (let i = 0; i < 3; i++) { const m = edged(new THREE.BoxGeometry(2.4, .52, 1.3), i === 1 ? VIO : TEAL, 0x16205f); m.position.y = (i - 1) * .66; srv.add(m); srvParts.push(m);
+  for (let k = 0; k < 4; k++) { const d = new THREE.Mesh(new THREE.SphereGeometry(.05, 10, 10), new THREE.MeshBasicMaterial({ color: hot(k === 0 ? 0x34d399 : 0x67e8f9, 1.8), transparent: true })); d.position.set(-.95 + k * .22, (i - 1) * .66, .67); d.userData = { ph: i * 2 + k }; srv.add(d); srvParts.push(d); } }
+function setSrv(px, py, s, t, a = 1) { srv.visible = s > .001 && a > .01; srv.position.set((px - 540) * PX, -(py - 960) * PX, 0); srv.scale.setScalar(s); srv.rotation.set(.28, Math.sin(t * .5) * .45 - .3, 0);
+  srv.traverse(o => { if (o.material) { o.material.opacity = a * (o.userData.ph !== undefined ? (.5 + .5 * Math.sin(t * 6 + o.userData.ph)) : 1); } }); }
+const dbg = new THREE.Group(); scene.add(dbg); for (let i = 0; i < 3; i++) { const m = edged(new THREE.CylinderGeometry(1, 1, .46, 40), 0xfbbf24, 0x8a6a10); m.position.y = (i - 1) * .62; dbg.add(m); }
+function setDb(px, py, s, t) { dbg.visible = s > .001; dbg.position.set((px - 540) * PX, -(py - 960) * PX, 0); dbg.scale.setScalar(s); dbg.rotation.set(.35, t * .5, 0); }
+
+// ---------- DOM helpers ----------
+const stage = document.getElementById('stage');
+function el(cls, html, parent = stage) { const e = document.createElement('div'); e.className = cls; e.innerHTML = html; parent.appendChild(e); return e; }
+function put(e, op, tf, extra) { if (op <= .003) { e.style.opacity = 0; e.style.visibility = 'hidden'; e.style.transform = 'none'; return; } e.style.visibility = 'visible'; e.style.opacity = op; e.style.transform = tf; if (extra) Object.assign(e.style, extra); }
+function K(html, top, size, cls = '') { const e = el('k ' + cls, html); e.style.top = top + 'px'; e.style.fontSize = size + 'px'; return e; }
+function show(e, t, a, b, mode = 'rise', fo = .35) { if (t < a || t > b) return put(e, 0); const i = pr(t, a, a + .5), o = pr(t, b - fo, b); let op = Math.min(eo(Math.min(1, i * 1.6)), 1 - ei(o)), tf = '', fl = 'none';
+  if (mode === 'rise') { tf = `translateY(${(1 - eo(i)) * 90 - o * 60}px)`; fl = `blur(${(1 - eo(i)) * 14 + o * 10}px)`; }
+  if (mode === 'zoom') { tf = `scale(${lerp(2.2, 1, eo(i)) + (t - a) * .02 - o * .2})`; fl = `blur(${(1 - eo(i)) * 20 + o * 8}px)`; }
+  if (mode === 'slam') { const s = lerp(3, 1, eo(pr(t, a, a + .22))); const sh = t > a + .22 ? (1 - pr(t, a + .22, a + .6)) : 0; tf = `scale(${s}) translate(${Math.sin(t * 90) * 9 * sh}px, ${Math.cos(t * 70) * 7 * sh}px)`; }
+  if (mode === 'wipe') { tf = `translateX(${(1 - eo(i)) * -40}px)`; e.style.clipPath = `inset(0 0 0 ${100 - eo(pr(t, a, a + .7)) * 100}%)`; }
+  put(e, op, tf, { filter: fl }); }
+// panel: centre (cx, cy), scale, rotations
+function panel(e, o) { const op = o.op ?? 1; if (op <= .003) return put(e, 0); const w = e.offsetWidth, h = e.offsetHeight;
+  put(e, op, `translate3d(${o.x - w / 2}px, ${o.y - h / 2}px, ${o.z || 0}px) rotateX(${o.rx || 0}deg) rotateY(${o.ry || 0}deg) rotateZ(${o.rz || 0}deg) scale(${o.s ?? 1})`, { filter: o.blur ? `blur(${o.blur}px)` : 'none' }); }
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function codePanel(file, note, lines, start = 1) { const e = el('panel code', `<div class="bar"><i></i><i></i><i></i><b>${file}</b><span>${note}</span></div><div class="body">${lines.map((l, i) => `<div class="ln ${l.ar ? 'ar' : ''}"><div class="hl"></div><u>${l.n ?? start + i}</u><p>${l.h}</p></div>`).join('')}</div>`); e.lines = [...e.querySelectorAll('.ln')]; return e; }
+function hl(p, i, a) { p.lines[i].querySelector('.hl').style.opacity = a; p.lines[i].style.color = a > .4 ? '#fff' : ''; }
+function lineY(p, i, o) { const l = p.lines[i]; return o.y + (l.offsetTop + l.offsetHeight / 2 - p.offsetHeight / 2) * (o.s ?? 1); }
+function uiPanel(w, h) { const e = el('panel ui', `<canvas width="${w}" height="${h}"></canvas>`); e.cv = e.querySelector('canvas'); e.g = e.cv.getContext('2d'); return e; }
+function drawFrame(p, img, sx, sy, sw, sh) { if (img) p.g.drawImage(img, sx, sy, sw, sh, 0, 0, p.cv.width, p.cv.height); }
+// beams
+const bgroup = document.getElementById('bgroup'); const beamPool = Array.from({ length: 5 }, () => { const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('fill', 'none'); p.setAttribute('stroke-width', 6); p.setAttribute('stroke-linecap', 'round'); const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('r', 12); bgroup.append(p, c); return { p, c }; }); let beamN = 0;
+function beam(x1, y1, x2, y2, a, t, color = '#67e8f9', bend = 160) { if (a <= .01 || beamN >= beamPool.length) return; const b = beamPool[beamN++]; const mx = (x1 + x2) / 2 + bend, my = (y1 + y2) / 2;
+  b.p.setAttribute('d', `M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}`); b.p.setAttribute('stroke', color); b.p.setAttribute('stroke-dasharray', '18 16'); b.p.setAttribute('stroke-dashoffset', -t * 160); b.p.setAttribute('opacity', a * .9);
+  const u = (t * .9) % 1, q = 1 - u; b.c.setAttribute('cx', q * q * x1 + 2 * q * u * mx + u * u * x2); b.c.setAttribute('cy', q * q * y1 + 2 * q * u * my + u * u * y2); b.c.setAttribute('fill', '#fff'); b.c.setAttribute('opacity', a); }
+const ICON = { no: '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#fb7185" stroke-width="7"/><path d="M15 15 L49 49" stroke="#fb7185" stroke-width="7" stroke-linecap="round"/></svg>', ok: '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#34d399" stroke-width="7"/><path d="M19 33 L28 42 L46 23" fill="none" stroke="#34d399" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>', sos: '<svg viewBox="0 0 64 64"><path d="M32 6 L60 56 H4Z" fill="none" stroke="#fbbf24" stroke-width="7" stroke-linejoin="round"/><path d="M32 26 V40 M32 47 V49" stroke="#fbbf24" stroke-width="7" stroke-linecap="round"/></svg>' };
+
+// ---------- content (real code from the two projects) ----------
+const k = s => `<span class="c-k">${s}</span>`, st = s => `<span class="c-s">${esc(s)}</span>`, f = s => `<span class="c-f">${s}</span>`, v = s => `<span class="c-v">${s}</span>`, n = s => `<span class="c-n">${s}</span>`, cm = s => `<span class="c-c">${s}</span>`;
+const codeT = codePanel('sanad / supabase/migrations/0001_core.sql', 'جدول الأسئلة', [
+  { n: 149, h: `${k('create table')} public.${f('assistant_logs')} (` },
+  { n: 151, h: `  user_id ${k('uuid')} ${k('references')} public.profiles (id),` },
+  { n: 153, h: `  question ${k('text not null check')} (char_length(question) ${n('&lt;= 500')}),` },
+  { n: 157, h: `  reply ${k('text not null default')} ${st("''")},` },
+  { n: 161, h: `  created_at ${k('timestamptz not null default')} ${f('now')}()` } ]);
+const codeW = codePanel('sanad / src/app/api/assistant/route.ts', 'الـ Backend بيكتب', [
+  { n: 44, h: `${k('await')} supabase.${f('rpc')}(${st('"log_assistant"')}, {` },
+  { n: 46, h: `  p_question: question,` },
+  { n: 50, h: `  p_reply: result.text,` },
+  { n: 54, h: `});` } ]);
+const codeA = codePanel('sanad / src/app/admin/logs/page.tsx', 'لوحة الأدمن', [
+  { n: 20, h: `${k('await')} ${f('requireStaff')}(${st('"/admin/logs"')});` },
+  { n: 23, h: `${k('let')} q = supabase` },
+  { n: 24, h: `  .${f('from')}(${st('"assistant_logs"')})` },
+  { n: 26, h: `  .${f('order')}(${st('"created_at"')}, { ascending: ${k('false')} })` },
+  { n: 27, h: `  .${f('limit')}(${n('80')});` } ]);
+const codeL = codePanel('sanad / supabase/migrations/0001_core.sql', 'حماية الصفوف', [
+  { n: 163, h: `${k('alter table')} public.assistant_logs ${k('enable row level security')};` },
+  { n: 164, h: `${k('create policy')} ${st('"logs: owner and staff read"')} … ${k('for select')}` },
+  { n: 165, h: `  ${k('using')} (user_id = auth.uid() ${k('or')} public.${f('is_staff')}());` } ]);
+const codeI = codePanel('cockpit / app.py', 'منصة البيانات', [
+  { n: 390, h: `${k('CREATE TABLE IF NOT EXISTS')} ${f('items')} (` },
+  { n: 393, h: `    branch ${k('TEXT NOT NULL')},` },
+  { n: 395, h: `    name ${k('TEXT NOT NULL')},` },
+  { n: 398, h: `    sold ${k('REAL NOT NULL')},` },
+  { n: 399, h: `    stock ${k('REAL NOT NULL')},` },
+  { n: 400, h: `    price ${k('REAL NOT NULL')},` },
+  { n: 2033, h: `rows = [${f('dict')}(row) ${k('for')} row ${k('in')} db.${f('execute')}(${st('"SELECT * FROM items"')})]` } ]);
+const codeU = codePanel('cockpit / app.py', 'الحل', [
+  { n: 52, h: `${v('DATABASE_URL')} = os.environ.${f('get')}(${st('"DATABASE_URL"')}, ${st('""')}).${f('strip')}() ${k('or')} ${k('None')}` },
+  { n: 52, h: `${cm('# PostgreSQL when set, SQLite otherwise')}` } ]);
+const uiD = uiPanel(900, 582);
+const allCode = [codeT, codeW, codeA, codeL, codeI, codeU], allUi = [uiD];
+
+// the "sheet" table (example rows, labelled)
+const EX = [['عندي صداع آخد إيه؟', 'باراسيتامول… حسب النشرة', 'مستخدم أ', '10:42'], ['نسيت جرعة الدوا', 'خدها أول ما تفتكر…', 'مستخدم ب', '11:05'], ['الدوا ده ينفع للحامل؟', 'لازم ترجعي للصيدلي…', 'مستخدم ج', '11:30']];
+const tbl = el('panel tbl', `<div class="tab"><b>assistant_logs</b><span>مثال توضيحي</span></div><div class="r h"><div>السؤال</div><div>الرد</div><div>صاحب السؤال</div><div>الوقت</div></div>` + EX.map(r => `<div class="r d">${r.map(c => `<div>${c}</div>`).join('')}</div>`).join('') + `<div class="r d nw"><div>مكان الدوا فين؟</div><div>جرّب صيدلية…</div><div>مستخدم د</div><div>12:01</div></div><div class="colhl"></div><div class="rowhl"></div>`);
+const tRows = [...tbl.querySelectorAll('.r.d')], tHead = tbl.querySelector('.r.h'), colhl = tbl.querySelector('.colhl'), rowhl = tbl.querySelector('.rowhl');
+function colBox(i, a) { const c = tHead.children[i]; colhl.style.left = c.offsetLeft + 'px'; colhl.style.width = c.offsetWidth + 'px'; colhl.style.opacity = a; }
+function rowBox(i, a) { const r = tRows[i]; rowhl.style.top = r.offsetTop + 'px'; rowhl.style.height = r.offsetHeight + 'px'; rowhl.style.opacity = a; }
+function colX(o, i) { const c = tHead.children[i]; return o.x + (c.offsetLeft + c.offsetWidth / 2 - tbl.offsetWidth / 2) * (o.s ?? 1); }
+const headY = o => o.y + (tHead.offsetTop + tHead.offsetHeight / 2 - tbl.offsetHeight / 2) * (o.s ?? 1);
+// admin page (schematic, no real data)
+const admin = el('panel admin', `<div class="top">سجل المساعد<small>شكل توضيحي · من غير بيانات حقيقية</small></div>` + Array.from({ length: 7 }, (_, i) => `<div class="it"><i style="background:${['#34d399', '#fbbf24', '#34d399', '#fb7185', '#34d399', '#34d399', '#fbbf24'][i]}"></i><b style="width:${[380, 300, 420, 260, 340, 400, 290][i]}px"></b><b style="width:${[160, 200, 120, 180, 140, 110, 170][i]}px;margin-right:auto;opacity:.6"></b></div>`).join(''));
+const adminIt = [...admin.querySelectorAll('.it')];
+const FILESVG = '<svg width="150" height="180" viewBox="0 0 60 72"><path d="M6 4 H40 L54 18 V68 H6 Z" fill="rgba(148,163,184,.12)" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round"/><path d="M40 4 V18 H54" fill="none" stroke="#94a3b8" stroke-width="3"/><path d="M15 32 H45 M15 42 H45 M15 52 H35" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/></svg>';
+const fileEl = el('file', FILESVG + '<span>pharmacy.db</span>');
+const upds = [0, 1, 2].map(() => el('upd', 'تحديث للموقع'));
+const shards = Array.from({ length: 16 }, () => { const e = el('abs', '<div style="width:22px;height:22px;background:#94a3b8;border-radius:3px"></div>'); e.u = { a: rnd() * 6.28, r: 120 + rnd() * 260, rot: rnd() * 720 - 360 }; return e; });
+const LOCKSVG = '<svg width="120" height="120" viewBox="0 0 64 64"><rect x="12" y="28" width="40" height="30" rx="7" fill="none" stroke="currentColor" stroke-width="6"/><path d="M20 28 V20 a12 12 0 0 1 24 0 V28" fill="none" stroke="currentColor" stroke-width="6"/></svg>';
+const lockEl = el('keyic', LOCKSVG);
+const SHIELD = '<svg width="64" height="64" viewBox="0 0 64 64"><path d="M32 6 L54 14 V30 C54 44 44 54 32 58 C20 54 10 44 10 30 V14 Z" fill="none" stroke="#34d399" stroke-width="6" stroke-linejoin="round"/><path d="M22 32 L29 39 L43 25" fill="none" stroke="#34d399" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const kk = {
+  ep: K('الحلقة <span class="mono">2</span>', 980, 150, 'grad'), h0: K('<span class="mono">Database</span>', 1180, 90, 'gold'),
+  q1: K('بيجيب البيانات منين؟', 1300, 84, 'glow'), q2: K('وبيحفظ الأسئلة فين؟', 1420, 84, 'glow'), q3: K('من جوه منصة سند', 1640, 76, 'gold'),
+  a1: K('مش بيتحذف', 420, 110, 'glow'), a2: K('<span class="mono">Database</span>', 330, 190, 'gold'), a3: K('قاعدة البيانات', 560, 96, 'glow'),
+  x1: K('جدول = شيت', 520, 90, 'gold'), x2: K('عمود = نوع معلومة', 520, 90, 'grad'), x3: K('صف = حاجة واحدة', 520, 90, 'glow'), x4: K('كل صف = سؤال واحد', 520, 96, 'gold'),
+  t1: K('القاعدة بتحمي نفسها', 1690, 80, 'gold'),
+  s1: K('مين بيكتب؟', 820, 110, 'glow'), s2: K('الـ <span class="mono">Backend</span>', 820, 130, 'grad'),
+  r1: K('لصاحب المنصة', 830, 110, 'gold'), r2: K('آخر <span class="mono">80</span> سؤال', 830, 130, 'glow'),
+  l1: K('معلومات صحية', 1150, 110, 'red'), l2: K('مينفعش أي حد يشوفها', 1290, 80, 'red'), l3: K('<span class="mono">Row Level Security</span>', 1180, 84, 'grad'),
+  d1: K('القاعدة الأول… وبعدين الذكاء الاصطناعي', 1810, 54, 'glow'),
+  m1: K('غلطة وقعنا فيها', 330, 110, 'red'), m2: K('البيانات بتضيع', 1500, 110, 'red'), m3: K('الحل', 330, 130, 'gold'), m4: K('<span class="mono">PostgreSQL</span>', 1520, 120, 'gold'), m5: K('منفصلة… وبتفضل موجودة', 1650, 72, 'glow'),
+  e1: K('بيعرض', 1240, 70, 'glow'), e2: K('بيفكّر', 1240, 70, 'grad'), e3: K('بيفتكر', 1240, 70, 'gold'),
+  e4: K('<span class="mono">API</span>', 1000, 260, 'grad'), n0: K('الحلقة الجاية', 300, 110, 'grad'),
+  c1: K('ذكاء اصطناعي', 930, 120), c2: K('من الصفر', 1070, 150, 'gold'), c3: K('خطوة بخطوة', 1540, 80, 'glow'),
+};
+['e1', 'e2', 'e3'].forEach((id, i) => { kk[id].style.left = [740, 400, 60][i] + 'px'; kk[id].style.right = 'auto'; kk[id].style.width = '280px'; });
+const logoBig = el('abs', '<img src="assets/logo-avatar.png" style="width:640px;height:640px;border-radius:50%;display:block">');
+const T = (s, c = '') => el('tag ' + c, s);
+const tU = [T('الناس بتسأل عن إيه'), T('أراجع الردود', 'vio'), T('المساعد يتعلم إيه')], tStaff = el('card ok', SHIELD + 'فريق المنصة بس'), tGem = el('chip', 'Gemini'), tTel = el('chip', 'Telegram');
+const roadNames = ['LLM و Prompt', 'Frontend و Backend', 'Database', 'API', 'Webhook']; const rsteps = roadNames.map((s, i) => { const e = el('rstep' + (i <= 2 ? ' done' : i === 3 ? ' on' : ''), `<i>${i}</i><span style="direction:ltr">${s}</span>`); e.style.top = (520 + i * 118) + 'px'; return e; });
+const road = document.getElementById('road'); for (let i = 0; i < 10; i++) road.appendChild(Object.assign(document.createElement('i'), { className: i === 2 ? 'on' : '' }));
+const packet = el('abs', '<div style="width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 30px 12px #fbbf24"></div>');
+const mini = uiPanel(300, 550);
+
+window.render = function (t) {
+  const si = S.findLastIndex(s => t >= s - .001), sc = si < 0 ? 0 : si, lt = t - S[sc];
+  beamN = 0; beamPool.forEach(b => { b.p.setAttribute('opacity', 0); b.c.setAttribute('opacity', 0); });
+  let coreP = [540, 700, 0], srvP = [540, 1400, 0, 1], dbP = [540, 900, 0], fenceA = 0, fenceAt = null, flash = 0, hud = 0, pk = null;
+  camera.position.set(Math.sin(t * .21) * .5, Math.cos(t * .17) * .4, 10); camera.lookAt(0, 0, 0);
+  for (const m of floaters) { m.rotation.set(m.userData.rx * t, m.userData.ry * t, 0); m.position.y = m.userData.y + Math.sin(t * .5 + m.userData.ph) * .6; }
+  const sway = (a, b = 0) => Math.sin(t * .6 + b) * a;
+  const st8 = new Map(); allCode.concat(allUi, [tbl, admin, mini]).forEach(p => st8.set(p, { op: 0 }));
+  const tg = new Map([...tU, tStaff].map(e => [e, null]));
+  const tagAt = (e, x, y, a) => put(e, Math.min(1, a), `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${.5 + .5 * back(clamp(a))})`);
+  allCode.forEach(p => p.lines.forEach((l, i) => hl(p, i, 0)));
+  colBox(0, 0); rowBox(0, 0); tRows.forEach((r, i) => r.style.opacity = i < 3 ? 1 : 0);
+  if (sc >= 1 && sc <= 8) hud = Math.min(eo(pr(t, S[1], S[1] + .6)), 1 - pr(t, S[9] - .5, S[9]));
+
+  // ===== S1 hook: continues from episode 1's last image =====
+  if (sc === 0) { const a = back(pr(t, .2, 1.0)), out = eio(pr(t, 1.6, 2.3));
+    put(logoBig, a > 0 ? 1 - out : 0, `translate(220px, ${lerp(250, 60, out)}px) scale(${a * lerp(1, .5, out)}) rotate(${(1 - eo(pr(t, .2, 1.2))) * -40}deg)`);
+    show(kk.ep, t, .7, 2.4, 'zoom'); show(kk.h0, t, 1.1, 2.4, 'rise');
+    hud = eo(pr(t, 2.2, 2.8));
+    const enter = eio(pr(lt, 8.3, 10.6));
+    srvP = [540, 760, back(pr(lt, 1.6, 2.3)) * .9 * (1 - eio(pr(lt, 7.6, 8.4))), 1];
+    dbP = [540, lerp(lerp(1100, 820, eio(pr(lt, 7.6, 8.4))), 960, enter), back(pr(lt, 4.9, 5.6)) * lerp(.9, 6, ei(enter))];
+    beam(540, 900, 540, 1000, win(lt, 5.0, 7.6), t, '#fbbf24', 0);
+    show(kk.q1, t, V(0, 2.8), V(0, 7.6), 'rise'); show(kk.q2, t, V(0, 5.2), V(0, 7.6), 'rise'); show(kk.q3, t, V(0, 9.4), S[1] - .2, 'wipe');
+    flash = Math.max(0, 1 - Math.abs(t - S[1] + .05) / .35) * .9;
+  } else { put(logoBig, 0); [kk.ep, kk.h0, kk.q1, kk.q2, kk.q3].forEach(e => put(e, 0)); }
+
+  // ===== S2 what: the sheet analogy =====
+  if (sc === 1) { const ex = eio(pr(t, S[2] - .6, S[2]));
+    dbP = [540, lerp(1150, 1560, eio(pr(lt, 8.4, 9.2))), back(pr(lt, .2, 1.0)) * lerp(1.2, .55, eio(pr(lt, 8.4, 9.2))) * (1 - ex)];
+    show(kk.a1, t, V(1, 3.3), V(1, 5.9), 'slam'); kk.a1.style.textDecoration = 'none';
+    show(kk.a2, t, V(1, 6.0), V(1, 8.4), 'slam'); show(kk.a3, t, V(1, 7.3), V(1, 8.4), 'rise');
+    const ti = back(pr(lt, 8.7, 9.5)); const oT = { x: 540, y: 1000, s: Math.min(1, ti) * .98, rx: (1 - Math.min(1, ti)) * 60 + sway(2), ry: sway(3, 1), op: Math.min(1, ti) * (1 - ex) }; st8.set(tbl, oT);
+    show(kk.x1, t, V(1, 11.5), V(1, 12.8), 'zoom'); show(kk.x2, t, V(1, 12.8), V(1, 14.2), 'zoom'); show(kk.x3, t, V(1, 14.2), V(1, 16.2), 'zoom'); show(kk.x4, t, V(1, 16.2), S[2] - .3, 'slam');
+    colBox(0, win(lt, 12.8, 14.2)); rowBox(1, win(lt, 14.2, 18.1));
+    tbl.querySelector('.tab b').style.boxShadow = win(lt, 11.5, 12.8) > .3 ? '0 0 30px #fbbf24' : 'none';
+  } else [kk.a1, kk.a2, kk.a3, kk.x1, kk.x2, kk.x3, kk.x4].forEach(e => put(e, 0));
+
+  // ===== S3 table: the real table =====
+  if (sc === 2) { const inn = eo(pr(lt, 0, .8)), ex = eio(pr(t, S[3] - .5, S[3]));
+    const oC = { x: 540, y: 560 - (1 - inn) * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: 1 - ex * .0 }; st8.set(codeT, oC);
+    const oT = { x: 540, y: 1330, s: .98, rx: sway(2) + 4, ry: sway(3, 1), op: 1 }; st8.set(tbl, oT);
+    hl(codeT, 0, win(lt, 2.8, 4.3));
+    const cols = [[4.8, 2, 0], [5.9, 3, 1], [7.1, 1, 2], [8.6, 4, 3]];
+    cols.forEach(([at, line, col], i) => { const a = win(lt, at, i < 3 ? cols[i + 1][0] : 9.6); hl(codeT, line, a); if (a > .1) colBox(col, a); beam(lerp(980, 60, i % 2), lineY(codeT, line, oC), colX(oT, col), headY(oT) - 20, a, t, ['#67e8f9', '#f0abfc', '#67e8f9', '#f0abfc'][i], i % 2 ? -120 : 120); });
+    const cap = win(lt, 11.3, 15.5); hl(codeT, 2, cap); if (cap > .1) colBox(0, cap);
+    show(kk.t1, t, V(2, 13.3), S[3] - .3, 'zoom');
+    if (ex > 0) st8.set(codeT, { ...oC, y: oC.y - ex * 900 });
+  } else put(kk.t1, 0);
+
+  // ===== S4 save =====
+  if (sc === 3) { const inn = eo(pr(lt, 0, .8)), ex = eio(pr(t, S[4] - .5, S[4]));
+    show(kk.s1, t, V(3, .1), V(3, 2.8), 'rise'); show(kk.s2, t, V(3, 2.9), V(3, 5.0), 'slam');
+    srvP = [270, 880, back(pr(lt, 2.9, 3.6)) * .7 * (1 - ex), 1]; dbP = [810, 880, back(pr(lt, .4, 1.1)) * .75 * (1 - ex)];
+    const oW = { x: 540, y: 520 - (1 - eo(pr(lt, 4.9, 5.6))) * 900 - ex * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: pr(lt, 4.9, 5.0) }; st8.set(codeW, oW);
+    hl(codeW, 0, win(lt, 6.4, 9.4)); hl(codeW, 1, win(lt, 7.7, 9.4)); hl(codeW, 2, win(lt, 8.2, 9.4));
+    const oT = { x: 540, y: 1390, s: .98, rx: sway(2) + 4, ry: sway(3, 1), op: inn * (1 - ex) }; st8.set(tbl, oT);
+    const g = pr(lt, 7.2, 8.2); if (lt > 7.2 && lt < 8.25) pk = [lerp(270, 810, eio(g)), 880 - Math.sin(g * Math.PI) * 140]; if (lt > 8.2 && lt < 8.7) pk = [lerp(810, 540, eio(pr(lt, 8.2, 8.7))), lerp(880, 1500, eio(pr(lt, 8.2, 8.7)))];
+    const nr = eo(pr(lt, 8.6, 9.1)); tRows[3].style.opacity = nr; rowBox(3, win(lt, 8.6, 9.4) * .9);
+    beam(270, 880, 810, 880, win(lt, 7.0, 9.0) * .6, t, '#fbbf24', -140);
+  } else [kk.s1, kk.s2].forEach(e => put(e, 0));
+
+  // ===== S5 read: the admin log =====
+  if (sc === 4) { const ex = eio(pr(t, S[5] - .5, S[5]));
+    show(kk.r1, t, V(4, 1.8), V(4, 3.2), 'slam');
+    const oA = { x: 540, y: 520 - (1 - eo(pr(lt, 3.0, 3.8))) * 900 - ex * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: pr(lt, 3.0, 3.1) }; st8.set(codeA, oA);
+    hl(codeA, 2, win(lt, 6.4, 8.3)); hl(codeA, 3, win(lt, 9.3, 10.6)); hl(codeA, 4, win(lt, 8.2, 10.6));
+    dbP = [540, 1000, back(pr(lt, 5.6, 6.3)) * .6 * (1 - eio(pr(lt, 8.8, 9.6)))];
+    show(kk.r2, t, V(4, 8.2), V(4, 10.5), 'slam');
+    const ai = back(pr(lt, 9.4, 10.1)); const oP = { x: 540, y: 1380, s: Math.min(1, ai) * .98, ry: sway(3, 2), rx: 4, op: Math.min(1, ai) * (1 - ex) }; st8.set(admin, oP);
+    adminIt.forEach((e, i) => e.style.opacity = eo(pr(lt, 9.8 + i * .12, 10.3 + i * .12)));
+    beam(540, 1100, 540, 1180, win(lt, 9.4, 10.6), t, '#fbbf24', 0);
+    [10.78, 12.62, 13.6].forEach((x, i) => tg.set(tU[i], [[780, 330, 560][i], [1040, 1040, 1730][i], win(lt, x, 15.9)]));
+  } else [kk.r1, kk.r2].forEach(e => put(e, 0));
+
+  // ===== S6 rules: privacy =====
+  if (sc === 5) { const ex = eio(pr(t, S[6] - .5, S[6]));
+    dbP = [540, 1180, back(pr(lt, 0, .8)) * .85 * (1 - ex)];
+    show(kk.l1, t, V(5, 1.4), V(5, 3.4), 'slam'); show(kk.l2, t, V(5, 2.8), V(5, 4.5), 'rise');
+    const oA = { x: 540, y: 520 - (1 - eo(pr(lt, 4.5, 5.2))) * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: pr(lt, 4.5, 4.6) * (lt < 8.7 ? 1 : 0) }; st8.set(codeA, oA);
+    hl(codeA, 0, win(lt, 5.7, 8.7)); tg.set(tStaff, [540, 860, win(lt, 6.8, 8.8)]);
+    const oL = { x: 540, y: 520, s: 1, rx: sway(2), ry: (1 - eio(pr(lt, 8.6, 9.3))) * -90 + sway(3, 1), op: lt > 8.6 ? 1 - ex : 0 }; st8.set(codeL, oL);
+    hl(codeL, 0, win(lt, 11.5, 13.3)); hl(codeL, 1, win(lt, 13.3, 17.4)); hl(codeL, 2, win(lt, 13.3, 17.4));
+    show(kk.l3, t, V(5, 11.6), V(5, 13.3), 'slam');
+    fenceA = eo(pr(lt, 13.3, 14.0)) * (1 - ex); fenceAt = [540, 1180, lerp(3, 1.25, eo(pr(lt, 13.3, 14.1)))];
+    const la = back(pr(lt, 13.6, 14.2)) * (1 - ex); put(lockEl, Math.min(1, la), `translate(${480}px, ${1500}px) scale(${la})`, { color: '#34d399', filter: 'drop-shadow(0 0 20px #34d399)' });
+    if (lt > 15.4 && lt < 16.9) { const g = pr(lt, 15.4, 16.9); const d = g < .5 ? eio(g * 2) : 1 - eio((g - .5) * 2); pk = [lerp(100, 330, d), lerp(1700, 1300, d)]; }
+    beam(100, 1700, 330, 1300, win(lt, 15.4, 16.9) * .6, t, '#fb7185', 60);
+  } else { [kk.l1, kk.l2, kk.l3].forEach(e => put(e, 0)); put(lockEl, 0); }
+
+  // ===== S7 data platform =====
+  if (sc === 6) { const inn = eo(pr(lt, 0, .8)), ex = eio(pr(t, S[7] - .5, S[7]));
+    const oI = { x: 540, y: 560 - (1 - inn) * 900 - ex * 900, s: .95, rx: sway(2), ry: sway(3, 1), op: 1 }; st8.set(codeI, oI);
+    hl(codeI, 0, win(lt, 2.4, 4.9)); [[5.1, 1], [5.6, 2], [6.3, 3], [7.1, 4], [7.9, 5]].forEach(([x, l], i) => hl(codeI, l, win(lt, x, 9.0)));
+    hl(codeI, 6, win(lt, 11.6, 14.4));
+    const fi = lt < 8.8 ? 8 : Math.min(95, 8 + Math.floor((lt - 8.8) * 30)); drawFrame(uiD, askF[fi], 0, 0, 900, 582);
+    const oU = { x: 540, y: 1400 + (1 - eo(pr(lt, 8.6, 9.4))) * 900 + ex * 900, s: 1.04, ry: sway(3, 2), rx: 4, op: lt > 8.6 ? 1 : 0 }; st8.set(uiD, oU);
+    dbP = [210, 1040, back(pr(lt, 11.6, 12.3)) * .5 * (1 - eio(pr(lt, 15.6, 16.2)))]; coreP = [870, 1040, back(pr(lt, 14.0, 14.7)) * .55 * (1 - eio(pr(lt, 15.6, 16.2)))];
+    if (lt > 14.4 && lt < 15.4) pk = [lerp(210, 870, eio(pr(lt, 14.4, 15.4))), 1040 - Math.sin(pr(lt, 14.4, 15.4) * Math.PI) * 120];
+    beam(210, 1040, 870, 1040, win(lt, 14.2, 16.0) * .6, t, '#fbbf24', -120);
+    show(kk.d1, t, V(6, 12.4), S[7] - .3, 'wipe');
+  } else put(kk.d1, 0);
+
+  // ===== S8 mistake: file on the server vs a real database =====
+  if (sc === 7) { const ex = eio(pr(t, S[8] - .5, S[8]));
+    show(kk.m1, t, V(7, .0), V(7, 2.3), 'slam');
+    const sv = back(pr(lt, 1.6, 2.3)), swp = eio(pr(lt, 13.2, 14.4));
+    srvP = [lerp(540, 300, eio(pr(lt, 9.8, 10.6))), 960, sv * .85 * (1 - ex), 1];
+    const fa = back(pr(lt, 2.8, 3.5)), crush = pr(lt, 7.5, 8.4);
+    put(fileEl, Math.min(1, fa) * (1 - crush), `translate(${540 - 80}px, ${660}px) scale(${Math.min(1, fa) * (1 - crush * .4)}) rotate(${crush * 25}deg)`);
+    shards.forEach(e => { const p = pr(lt, 7.6, 9.2); put(e, p > 0 && p < 1 ? 1 - p : 0, `translate(${540 + Math.cos(e.u.a) * e.u.r * eo(p)}px, ${760 + Math.sin(e.u.a) * e.u.r * eo(p) + 300 * p * p}px) rotate(${e.u.rot * p}deg)`); });
+    upds.forEach((e, i) => { const p = pr(lt, 5.6 + i * .5, 6.8 + i * .5); put(e, p > 0 && p < 1 ? Math.sin(p * Math.PI) : 0, `translate(${[180, 640, 400][i]}px, ${lerp(1300, 1150, p)}px)`); });
+    show(kk.m2, t, V(7, 8.3), V(7, 9.6), 'slam');
+    show(kk.m3, t, V(7, 9.6), V(7, 11.3), 'zoom');
+    dbP = [780, 960, back(pr(lt, 10.5, 11.2)) * .85 * (1 - ex)];
+    if (lt > 14.2) srvP[2] = srvP[2] * (Math.abs(Math.sin((lt - 14.2) * 3)) * .3 + .7);
+    show(kk.m4, t, V(7, 12.1), S[8] - .3, 'slam'); show(kk.m5, t, V(7, 13.3), S[8] - .3, 'rise');
+    const oU = { x: 540, y: 520 - (1 - eo(pr(lt, 11.3, 12.0))) * 900 - ex * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: pr(lt, 11.3, 11.4) }; st8.set(codeU, oU); hl(codeU, 0, win(lt, 12.1, 17.0)); hl(codeU, 1, win(lt, 12.1, 17.0));
+    beam(300, 960, 780, 960, win(lt, 13.3, 16.8) * .6, t, '#fbbf24', -100);
+  } else { [kk.m1, kk.m2, kk.m3, kk.m4, kk.m5].forEach(e => put(e, 0)); put(fileEl, 0); shards.forEach(e => put(e, 0)); upds.forEach(e => put(e, 0)); }
+
+  // ===== S9 recap + next =====
+  if (sc === 8) { const off = eio(pr(lt, 9.3, 10.0));
+    drawFrame(mini, sanadF[147], 0, 0, 584, 1071);
+    st8.set(mini, { x: 880, y: 900, s: back(pr(lt, 1.2, 1.9)) * .8 * (1 - off), ry: sway(5), rx: sway(2, 1), op: 1 - off });
+    srvP = [540, 920, back(pr(lt, 2.6, 3.3)) * .6 * (1 - off), 1]; dbP = [210, 920, back(pr(lt, 3.3, 4.0)) * .6 * (1 - off)];
+    show(kk.e1, t, V(8, 1.4), V(8, 9.5), 'rise'); show(kk.e2, t, V(8, 2.8), V(8, 9.5), 'rise'); show(kk.e3, t, V(8, 4.4), V(8, 9.5), 'rise');
+    beam(800, 920, 620, 920, win(lt, 3.0, 9.4) * .7, t, '#67e8f9', 0); beam(460, 920, 290, 920, win(lt, 3.8, 9.4) * .7, t, '#fbbf24', 0);
+    [[tGem, 8.0, 200], [tTel, 8.8, 880]].forEach(([e, x, xx]) => { const a = back(pr(lt, x, x + .5)) * (1 - eio(pr(lt, 10.3, 10.8))); put(e, Math.min(1, a), `translate(${xx}px, ${1450}px) translate(-50%,-50%) scale(${.6 + .4 * Math.min(1, a)})`); });
+    show(kk.e4, t, V(8, 10.4), V(8, 11.4), 'slam');
+    show(kk.n0, t, V(8, 11.3), S[9] - .3, 'zoom');
+    rsteps.forEach((e, i) => { const a = back(pr(lt, 11.4 + i * .1, 12.0 + i * .1)) * (1 - eio(pr(t, S[9] - .5, S[9]))); put(e, Math.min(1, a), `translateX(${(1 - Math.min(1, a)) * 200}px) scale(${i === 3 ? 1.12 + Math.sin(t * 5) * .03 : 1})`); });
+  } else { [kk.e1, kk.e2, kk.e3, kk.e4, kk.n0].forEach(e => put(e, 0)); put(tGem, 0); put(tTel, 0); rsteps.forEach(e => put(e, 0)); }
+
+  // ===== S10 CTA =====
+  if (sc === 9) { const a = back(pr(lt, 0, .8)); flash = (1 - pr(lt, 0, .5)) * .8;
+    put(logoBig, Math.min(1, a), `translate(220px, 220px) scale(${a * (1 + Math.sin(t * 3) * .015)})`);
+    show(kk.c1, t, V(9, .9), TOTAL + 5, 'rise'); show(kk.c2, t, V(9, 1.5), TOTAL + 5, 'zoom'); show(kk.c3, t, V(9, 3.1), TOTAL + 5, 'wipe');
+    const b = back(pr(lt, .25, .9)); const btn = document.getElementById('btn'); btn.style.opacity = Math.min(1, b); btn.style.transform = `scale(${b * (1 + Math.sin(t * 6) * .03)})`;
+  } else { if (sc !== 0) put(logoBig, 0); [kk.c1, kk.c2, kk.c3].forEach(e => put(e, 0)); document.getElementById('btn').style.opacity = 0; }
+
+  allCode.concat(allUi, [tbl, admin, mini]).forEach(p => panel(p, st8.get(p)));
+  for (const [e, v2] of tg) v2 ? tagAt(e, v2[0], v2[1], v2[2]) : put(e, 0);
+  put(packet, pk ? 1 : 0, pk ? `translate(${pk[0] - 17}px, ${pk[1] - 17}px) scale(${1 + Math.sin(t * 14) * .15})` : '');
+  setCore(coreP[0], coreP[1], coreP[2], t); setSrv(srvP[0], srvP[1], srvP[2], t, srvP[3]); setDb(dbP[0], dbP[1], dbP[2], t);
+  fence.visible = fenceA > .01; fence.material.opacity = fenceA; if (fenceAt) { fence.position.set((fenceAt[0] - 540) * PX, -(fenceAt[1] - 960) * PX, 0); fence.scale.setScalar(fenceAt[2]); } fence.rotation.z = t * .3;
+  document.getElementById('split').style.opacity = 0; document.getElementById('dark').style.opacity = 0;
+  document.getElementById('hud').style.opacity = hud; document.getElementById('flash').style.opacity = flash;
+  document.body.style.opacity = 1 - pr(t, TOTAL - .8, TOTAL - .05);
+  composer.render();
+};
+window.READY = true;
+</script>
+</body>
+</html>
