@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;900&family=JetBrains+Mono:wght@500;700&display=block">
+<style>
+  * { margin:0; box-sizing:border-box; }
+  html, body { width:1080px; height:1920px; overflow:hidden; background:#050816; font-family:Cairo, sans-serif; color:#fff; }
+  canvas#gl { position:absolute; inset:0; }
+  #vig { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,.6) 100%); }
+  #stage { position:absolute; inset:0; perspective:1900px; overflow:hidden; }
+  .abs { position:absolute; left:0; top:0; }
+  .k { position:absolute; left:0; right:0; text-align:center; font-weight:900; line-height:1.15; opacity:0; visibility:hidden; }
+  .glow { text-shadow:0 0 30px rgba(34,211,238,.75), 0 0 80px rgba(99,102,241,.6); }
+  .gold { background:linear-gradient(90deg,#fbbf24,#fde68a); -webkit-background-clip:text; color:transparent; filter:drop-shadow(0 0 26px rgba(251,191,36,.55)); }
+  .grad { background:linear-gradient(90deg,#22d3ee,#818cf8,#c084fc); -webkit-background-clip:text; color:transparent; filter:drop-shadow(0 0 30px rgba(99,102,241,.7)); }
+  .red { color:#fb7185; text-shadow:0 0 40px rgba(244,63,94,.7); }
+  .mono { font-family:"JetBrains Mono", monospace; direction:ltr; }
+  /* panels */
+  .panel { position:absolute; left:0; top:0; transform-origin:50% 50%; opacity:0; visibility:hidden; will-change:transform; }
+  .code { width:980px; border-radius:30px; background:linear-gradient(160deg, rgba(17,24,58,.96), rgba(9,13,36,.97)); border:2px solid rgba(129,140,248,.45); box-shadow:0 40px 100px rgba(0,0,0,.6), 0 0 60px rgba(99,102,241,.25); overflow:hidden; direction:ltr; }
+  .code .bar { display:flex; align-items:center; gap:12px; padding:18px 26px; border-bottom:1px solid rgba(129,140,248,.25); background:rgba(255,255,255,.03); }
+  .code .bar i { width:16px; height:16px; border-radius:50%; background:#334155; }
+  .code .bar b { margin-left:14px; font:700 26px "JetBrains Mono"; color:#a5b4fc; }
+  .code .bar span { margin-left:auto; font:600 24px Cairo; color:#67e8f9; direction:rtl; }
+  .code .body { padding:22px 0 26px; }
+  .ln { display:flex; gap:20px; padding:5px 30px 5px 0; font:500 29px/1.55 "JetBrains Mono", Cairo; color:#cbd5e1; position:relative; }
+  .ln u { text-decoration:none; width:74px; text-align:right; color:#475569; flex:none; }
+  .ln p { flex:1; white-space:pre-wrap; word-break:break-word; }
+  .ln.ar p { direction:rtl; text-align:right; font-family:Cairo, "JetBrains Mono"; font-weight:600; font-size:31px; }
+  .ln .hl { position:absolute; inset:0; background:linear-gradient(90deg, rgba(34,211,238,.28), rgba(129,140,248,.2)); border-left:6px solid #22d3ee; opacity:0; }
+  .c-k { color:#c084fc; } .c-s { color:#fde68a; } .c-f { color:#67e8f9; } .c-c { color:#64748b; } .c-n { color:#fb923c; } .c-v { color:#f0abfc; }
+  .ui { border-radius:34px; background:#0b1220; border:2px solid rgba(34,211,238,.45); box-shadow:0 40px 100px rgba(0,0,0,.6), 0 0 60px rgba(34,211,238,.2); overflow:hidden; }
+  .ui canvas { display:block; }
+  .tag { position:absolute; left:0; top:0; opacity:0; visibility:hidden; white-space:nowrap; padding:14px 34px; border-radius:999px; font-weight:900; font-size:46px; color:#050816; background:linear-gradient(90deg,#22d3ee,#a78bfa); box-shadow:0 0 50px rgba(34,211,238,.7); }
+  .tag.vio { background:linear-gradient(90deg,#f0abfc,#fbbf24); box-shadow:0 0 50px rgba(240,171,252,.6); }
+  .card { position:absolute; left:0; top:0; opacity:0; visibility:hidden; border-radius:28px; padding:26px 34px; background:rgba(15,23,60,.92); border:2px solid rgba(129,140,248,.5); font-weight:900; font-size:44px; display:flex; align-items:center; gap:24px; box-shadow:0 20px 60px rgba(0,0,0,.5); white-space:nowrap; }
+  .card svg { width:64px; height:64px; flex:none; }
+  .card.no { border-color:rgba(251,113,133,.7); } .card.ok { border-color:rgba(52,211,153,.7); }
+  /* hud */
+  #hud { position:absolute; left:0; right:0; top:70px; height:150px; opacity:0; }
+  #hud img { position:absolute; right:44px; top:0; width:132px; height:132px; border-radius:50%; }
+  #hud .nm { position:absolute; right:196px; top:14px; font-weight:900; font-size:40px; }
+  #hud .ep { position:absolute; right:196px; top:76px; font-weight:600; font-size:30px; color:#a5f3fc; }
+  #road { position:absolute; left:44px; top:44px; display:flex; gap:12px; direction:ltr; }
+  #road i { width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.14); }
+  #road i.on { background:#22d3ee; box-shadow:0 0 22px #22d3ee; }
+  #beams { position:absolute; inset:0; }
+  #flash { position:absolute; inset:0; opacity:0; background:radial-gradient(circle at 50% 45%, #fff, #67e8f9 30%, #6366f1 70%); }
+  .chip { position:absolute; left:0; top:0; opacity:0; visibility:hidden; padding:16px 40px; border-radius:999px; font:700 50px "JetBrains Mono"; direction:ltr; background:rgba(15,23,60,.9); border:2px solid rgba(129,140,248,.6); }
+  .snip { position:absolute; left:0; top:0; opacity:0; white-space:nowrap; font-weight:600; font-size:30px; color:#a5b4fc; }
+  .bub { position:absolute; left:0; top:0; opacity:0; visibility:hidden; white-space:nowrap; padding:14px 30px; border-radius:22px; font-weight:900; font-size:40px; background:rgba(244,63,94,.16); border:2px dashed #fb7185; color:#fecdd3; }
+  .col { position:absolute; top:1180px; width:440px; opacity:0; visibility:hidden; }
+  .col h4 { font-size:56px; font-weight:900; margin-bottom:18px; display:flex; align-items:center; gap:16px; }
+  .col div { font-size:38px; font-weight:600; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.12); }
+  .rstep { position:absolute; right:150px; opacity:0; visibility:hidden; display:flex; align-items:center; gap:26px; font-weight:900; font-size:44px; white-space:nowrap; }
+  .rstep i { font-style:normal; width:70px; height:70px; border-radius:50%; display:grid; place-items:center; font-size:36px; background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.25); }
+  .rstep.on i { background:linear-gradient(135deg,#22d3ee,#6366f1); color:#050816; border-color:transparent; box-shadow:0 0 40px #22d3ee; }
+  .rstep.done i { background:#34d399; color:#050816; border-color:transparent; }
+  .half { position:absolute; top:1080px; width:480px; height:520px; border-radius:34px; padding:34px; opacity:0; visibility:hidden; background:rgba(15,23,60,.92); border:2px solid rgba(34,211,238,.5); }
+  .half h5 { font:700 52px "JetBrains Mono"; direction:ltr; text-align:center; margin-bottom:8px; }
+  .half small { display:block; text-align:center; font-size:32px; font-weight:600; color:#a5f3fc; line-height:1.4; }
+  #btn { position:absolute; left:0; right:0; top:1330px; text-align:center; opacity:0; }
+  #btn span { display:inline-block; padding:22px 90px; border-radius:999px; font-weight:900; font-size:70px; color:#050816; background:linear-gradient(90deg,#22d3ee,#a78bfa); box-shadow:0 0 70px rgba(34,211,238,.7); }
+  .gate { position:absolute; left:0; top:0; opacity:0; visibility:hidden; width:860px; border-radius:26px; padding:22px 30px; background:rgba(15,23,60,.92); border:2px solid rgba(129,140,248,.5); font-weight:900; font-size:40px; display:flex; align-items:center; gap:22px; }
+  .gate i { font-style:normal; width:64px; height:64px; border-radius:18px; display:grid; place-items:center; font:700 34px "JetBrains Mono"; background:rgba(255,255,255,.1); flex:none; }
+  .gate.pass { border-color:#34d399; box-shadow:0 0 40px rgba(52,211,153,.35); } .gate.pass i { background:#34d399; color:#050816; }
+  .node { position:absolute; left:0; top:0; opacity:0; visibility:hidden; width:230px; text-align:center; font-weight:900; font-size:34px; line-height:1.25; }
+  .node i { font-style:normal; display:grid; place-items:center; width:84px; height:84px; margin:0 auto 12px; border-radius:50%; font:700 38px "JetBrains Mono"; background:rgba(255,255,255,.08); border:3px solid rgba(255,255,255,.25); }
+  .node.on i { background:linear-gradient(135deg,#22d3ee,#6366f1); color:#050816; border-color:transparent; box-shadow:0 0 44px #22d3ee; }
+  .sum { position:absolute; top:640px; width:480px; opacity:0; visibility:hidden; border-radius:34px; padding:34px; background:rgba(15,23,60,.92); border:2px solid rgba(34,211,238,.5); text-align:center; }
+  .sum h5 { font:700 56px "JetBrains Mono"; direction:ltr; margin-bottom:18px; } .sum div { font-size:50px; font-weight:900; padding:10px 0; opacity:0; }
+  #split { position:absolute; left:0; right:0; top:958px; height:5px; background:linear-gradient(90deg, transparent, #67e8f9, #fff, #c4b5fd, transparent); box-shadow:0 0 40px #67e8f9; opacity:0; transform-origin:50% 50%; }
+  #dark { position:absolute; left:0; right:0; top:960px; bottom:0; background:linear-gradient(180deg, rgba(0,0,0,.72), rgba(0,0,0,.5)); opacity:0; }
+  .keyic { position:absolute; left:0; top:0; opacity:0; visibility:hidden; }
+  .tbl { width:980px; border-radius:26px; overflow:hidden; background:rgba(12,18,48,.95); border:2px solid rgba(251,191,36,.55); box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 50px rgba(251,191,36,.18); }
+  .tbl .tab { display:flex; gap:12px; padding:14px 22px; background:rgba(251,191,36,.08); border-bottom:1px solid rgba(251,191,36,.3); font:700 28px "JetBrains Mono"; color:#fde68a; direction:ltr; }
+  .tbl .tab b { padding:6px 18px; border-radius:12px 12px 0 0; background:rgba(251,191,36,.18); }
+  .tbl .tab span { margin-left:auto; font:600 24px Cairo; color:#94a3b8; direction:rtl; }
+  .tbl .r { display:grid; grid-template-columns: 2.1fr 2.1fr 1.3fr 1fr; position:relative; }
+  .tbl .r div { padding:16px 18px; font-weight:600; font-size:28px; border-left:1px solid rgba(255,255,255,.08); border-bottom:1px solid rgba(255,255,255,.08); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tbl .r.h div { font-weight:900; font-size:30px; color:#fde68a; background:rgba(255,255,255,.04); }
+  .tbl .colhl { position:absolute; top:60px; bottom:0; background:rgba(34,211,238,.18); border:3px solid #22d3ee; border-radius:8px; opacity:0; pointer-events:none; }
+  .tbl .rowhl { position:absolute; left:0; right:0; height:64px; background:rgba(251,191,36,.16); border:3px solid #fbbf24; border-radius:8px; opacity:0; pointer-events:none; }
+  .admin { width:900px; border-radius:30px; overflow:hidden; background:#0b1220; border:2px solid rgba(34,211,238,.45); box-shadow:0 30px 80px rgba(0,0,0,.55); }
+  .admin .top { display:flex; align-items:center; gap:16px; padding:20px 28px; border-bottom:1px solid rgba(255,255,255,.1); font-weight:900; font-size:36px; }
+  .admin .top small { margin-right:auto; font-size:24px; font-weight:600; color:#94a3b8; }
+  .admin .it { display:flex; align-items:center; gap:18px; padding:18px 28px; border-bottom:1px solid rgba(255,255,255,.06); opacity:0; }
+  .admin .it i { width:16px; height:16px; border-radius:50%; flex:none; }
+  .admin .it b { height:16px; border-radius:8px; background:rgba(255,255,255,.22); display:block; }
+  .file { position:absolute; left:0; top:0; opacity:0; visibility:hidden; display:flex; flex-direction:column; align-items:center; gap:10px; font:700 34px "JetBrains Mono"; color:#cbd5e1; }
+  .upd { position:absolute; left:0; top:0; opacity:0; visibility:hidden; padding:10px 26px; border-radius:999px; font-weight:900; font-size:36px; background:rgba(34,211,238,.16); border:2px solid #22d3ee; white-space:nowrap; }
+</style>
+</head>
+<body>
+<canvas id="gl" width="1080" height="1920"></canvas>
+<div id="vig"></div>
+<svg id="beams" viewBox="0 0 1080 1920"><defs><filter id="bg"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g id="bgroup" filter="url(#bg)"></g></svg>
+<div id="dark"></div><div id="split"></div><div id="stage"></div>
+<div id="hud"><div id="road"></div><img src="assets/logo-avatar.png"><div class="nm">ذكاء اصطناعي من الصفر</div><div class="ep">الحلقة 3 · <span class="mono">API</span></div></div>
+<div id="btn"><span>تابعني</span></div>
+<div id="flash"></div>
+
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// ---------- timing ----------
+const D = [11.15, 13.24, 13.4, 17.0, 12.04, 16.43, 15.96, 11.39, 4.44], S = []; let acc = 1.0;
+for (const d of D) { S.push(acc); acc += d + 0.35; }
+const TOTAL = Math.round((acc + 2.2) * 10) / 10; window.TOTAL = TOTAL; window.STARTS = S;
+const V = (i, x) => S[i] + x;
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const pr = (t, a, b) => clamp((t - a) / (b - a));
+const eo = x => 1 - Math.pow(1 - x, 3), ei = x => x * x * x, eio = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9, c3 = c + 1; return x <= 0 ? 0 : 1 + c3 * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const lerp = (a, b, x) => a + (b - a) * x;
+const win = (t, a, b, fi = .4, fo = .35) => (t < a || t > b) ? 0 : Math.min(eo(pr(t, a, a + fi)), 1 - ei(pr(t, b - fo, b)));
+let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const TEAL = 0x22d3ee, VIO = 0x7c5cff, PUR = 0xa855f7;
+
+await document.fonts.load('900 100px Cairo'); await document.fonts.load('600 40px Cairo'); await document.fonts.load('500 30px "JetBrains Mono"'); await document.fonts.load('700 30px "JetBrains Mono"'); await document.fonts.ready;
+const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
+const pad3 = n => String(n).padStart(3, '0');
+const sanadF = await Promise.all(Array.from({ length: 148 }, (_, i) => loadImg(`fr/sanad/${pad3(i + 1)}.jpg`)));
+const tgF = await Promise.all(Array.from({ length: 365 }, (_, i) => loadImg(`fr/tg/${pad3(i + 1)}.jpg`)));
+const askF = await Promise.all(Array.from({ length: 228 }, (_, i) => loadImg(`fr/ask/${pad3(i + 1)}.jpg`)));
+
+// ---------- three background ----------
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gl'), antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(1080, 1920, false);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x050816); scene.fog = new THREE.FogExp2(0x050816, 0.02);
+const camera = new THREE.PerspectiveCamera(50, 1080 / 1920, 0.1, 300); scene.add(camera);
+scene.add(new THREE.AmbientLight(0x8899ff, 0.9));
+const L1 = new THREE.PointLight(TEAL, 120, 60); L1.position.set(5, 6, 6); camera.add(L1);
+const L2 = new THREE.PointLight(PUR, 120, 60); L2.position.set(-6, -4, 4); camera.add(L2);
+const composer = new EffectComposer(renderer); composer.setSize(1080, 1920);
+composer.addPass(new RenderPass(scene, camera)); const bloomPass = new UnrealBloomPass(new THREE.Vector2(540, 960), 0.8, 0.6, 0.9); composer.addPass(bloomPass); composer.addPass(new OutputPass());
+const hot = (c, k = 2.2) => new THREE.Color(c).multiplyScalar(k);
+function edged(geo, color, body = 0x1a2670) { const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: body, metalness: .55, roughness: .3, emissive: body, emissiveIntensity: .35, transparent: true })); m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: hot(color), transparent: true }))); return m; }
+{ const n = 2400, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = (rnd() - .5) * 70; pos[i * 3 + 1] = (rnd() - .5) * 110; pos[i * 3 + 2] = -5 - rnd() * 90; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x9fb4ff, size: .1, transparent: true, opacity: .8 }))); }
+const floaters = []; { const geos = [new THREE.IcosahedronGeometry(.8, 0), new THREE.BoxGeometry(1, 1, 1), new THREE.OctahedronGeometry(.8), new THREE.TorusGeometry(.6, .2, 10, 24)];
+  for (let i = 0; i < 12; i++) { const m = edged(geos[i % 4], [TEAL, VIO, PUR][i % 3]); m.position.set((rnd() - .5) * 26, (rnd() - .5) * 40, -10 - rnd() * 30); m.scale.setScalar(.6 + rnd()); m.userData = { rx: rnd() - .5, ry: rnd() - .5, y: m.position.y, ph: rnd() * 6 }; scene.add(m); floaters.push(m); } }
+// the LLM core
+const core = new THREE.Group(); scene.add(core);
+const coreWire = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(1, 1)), new THREE.LineBasicMaterial({ color: hot(TEAL) })); core.add(coreWire);
+const coreIn = new THREE.Mesh(new THREE.IcosahedronGeometry(.62, 2), new THREE.MeshBasicMaterial({ color: 0x6d4dff })); core.add(coreIn);
+const coreDots = []; for (let i = 0; i < 40; i++) { const d = new THREE.Mesh(new THREE.SphereGeometry(.035, 8, 8), new THREE.MeshBasicMaterial({ color: hot(0xfde68a, 1.6) })); const v = new THREE.Vector3(rnd() - .5, rnd() - .5, rnd() - .5).normalize().multiplyScalar(1); d.position.copy(v); core.add(d); coreDots.push(d); }
+const orbA = new THREE.Mesh(new THREE.TorusGeometry(1.45, .014, 8, 120), new THREE.MeshBasicMaterial({ color: hot(0x67e8f9, 1.5) })); core.add(orbA);
+const orbB = new THREE.Mesh(new THREE.TorusGeometry(1.7, .012, 8, 120), new THREE.MeshBasicMaterial({ color: hot(0xc4b5fd, 1.5) })); core.add(orbB);
+const fence = new THREE.Mesh(new THREE.TorusGeometry(2.1, .05, 12, 160), new THREE.MeshBasicMaterial({ color: hot(0x34d399, 1.8), transparent: true })); scene.add(fence);
+const PX = 2 * 10 * Math.tan(25 * Math.PI / 180) / 1920;       // world units per pixel at z=0, camera z=10
+function setCore(px, py, s, t) { core.visible = s > .001; core.position.set((px - 540) * PX, -(py - 960) * PX, 0); core.scale.setScalar(s); coreWire.rotation.set(t * .3, t * .45, 0); coreIn.scale.setScalar(1 + Math.sin(t * 3) * .06); orbA.rotation.set(1.2, t * .6, 0); orbB.rotation.set(-1, -t * .45, .5); }
+
+// server (backend) and database objects
+const srv = new THREE.Group(); scene.add(srv); const srvParts = [];
+for (let i = 0; i < 3; i++) { const m = edged(new THREE.BoxGeometry(2.4, .52, 1.3), i === 1 ? VIO : TEAL, 0x16205f); m.position.y = (i - 1) * .66; srv.add(m); srvParts.push(m);
+  for (let k = 0; k < 4; k++) { const d = new THREE.Mesh(new THREE.SphereGeometry(.05, 10, 10), new THREE.MeshBasicMaterial({ color: hot(k === 0 ? 0x34d399 : 0x67e8f9, 1.8), transparent: true })); d.position.set(-.95 + k * .22, (i - 1) * .66, .67); d.userData = { ph: i * 2 + k }; srv.add(d); srvParts.push(d); } }
+function setSrv(px, py, s, t, a = 1) { srv.visible = s > .001 && a > .01; srv.position.set((px - 540) * PX, -(py - 960) * PX, 0); srv.scale.setScalar(s); srv.rotation.set(.28, Math.sin(t * .5) * .45 - .3, 0);
+  srv.traverse(o => { if (o.material) { o.material.opacity = a * (o.userData.ph !== undefined ? (.5 + .5 * Math.sin(t * 6 + o.userData.ph)) : 1); } }); }
+const dbg = new THREE.Group(); scene.add(dbg); for (let i = 0; i < 3; i++) { const m = edged(new THREE.CylinderGeometry(1, 1, .46, 40), 0xfbbf24, 0x8a6a10); m.position.y = (i - 1) * .62; dbg.add(m); }
+function setDb(px, py, s, t) { dbg.visible = s > .001; dbg.position.set((px - 540) * PX, -(py - 960) * PX, 0); dbg.scale.setScalar(s); dbg.rotation.set(.35, t * .5, 0); }
+
+const portal = new THREE.Group(); scene.add(portal);
+{ const fr = edged(new THREE.TorusGeometry(1.1, .09, 12, 4), TEAL, 0x16205f); fr.rotation.z = Math.PI / 4; fr.scale.set(1, 1.35, 1); portal.add(fr);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 1.95), new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: .25 })); portal.add(glow); portal.userData = { fr, glow }; }
+function setPortal(px, py, s, t, state = 'open') { portal.visible = s > .001; portal.position.set((px - 540) * PX, -(py - 960) * PX, 0); portal.scale.setScalar(s); portal.rotation.y = Math.sin(t * .6) * .35;
+  const c = state === 'open' ? 0x22d3ee : state === 'closed' ? 0xfb7185 : 0x334155; portal.userData.glow.material.color.set(c); portal.userData.glow.material.opacity = state === 'off' ? .06 : .22 + .08 * Math.sin(t * 5);
+  portal.userData.fr.children[0].material.color.copy(hot(c === 0x334155 ? 0x475569 : c)); }
+
+// ---------- DOM helpers ----------
+const stage = document.getElementById('stage');
+function el(cls, html, parent = stage) { const e = document.createElement('div'); e.className = cls; e.innerHTML = html; parent.appendChild(e); return e; }
+function put(e, op, tf, extra) { if (op <= .003) { e.style.opacity = 0; e.style.visibility = 'hidden'; e.style.transform = 'none'; return; } e.style.visibility = 'visible'; e.style.opacity = op; e.style.transform = tf; if (extra) Object.assign(e.style, extra); }
+function K(html, top, size, cls = '') { const e = el('k ' + cls, html); e.style.top = top + 'px'; e.style.fontSize = size + 'px'; return e; }
+function show(e, t, a, b, mode = 'rise', fo = .35) { if (t < a || t > b) return put(e, 0); const i = pr(t, a, a + .5), o = pr(t, b - fo, b); let op = Math.min(eo(Math.min(1, i * 1.6)), 1 - ei(o)), tf = '', fl = 'none';
+  if (mode === 'rise') { tf = `translateY(${(1 - eo(i)) * 90 - o * 60}px)`; fl = `blur(${(1 - eo(i)) * 14 + o * 10}px)`; }
+  if (mode === 'zoom') { tf = `scale(${lerp(2.2, 1, eo(i)) + (t - a) * .02 - o * .2})`; fl = `blur(${(1 - eo(i)) * 20 + o * 8}px)`; }
+  if (mode === 'slam') { const s = lerp(3, 1, eo(pr(t, a, a + .22))); const sh = t > a + .22 ? (1 - pr(t, a + .22, a + .6)) : 0; tf = `scale(${s}) translate(${Math.sin(t * 90) * 9 * sh}px, ${Math.cos(t * 70) * 7 * sh}px)`; }
+  if (mode === 'wipe') { tf = `translateX(${(1 - eo(i)) * -40}px)`; e.style.clipPath = `inset(0 0 0 ${100 - eo(pr(t, a, a + .7)) * 100}%)`; }
+  put(e, op, tf, { filter: fl }); }
+// panel: centre (cx, cy), scale, rotations
+function panel(e, o) { const op = o.op ?? 1; if (op <= .003) return put(e, 0); const w = e.offsetWidth, h = e.offsetHeight;
+  put(e, op, `translate3d(${o.x - w / 2}px, ${o.y - h / 2}px, ${o.z || 0}px) rotateX(${o.rx || 0}deg) rotateY(${o.ry || 0}deg) rotateZ(${o.rz || 0}deg) scale(${o.s ?? 1})`, { filter: o.blur ? `blur(${o.blur}px)` : 'none' }); }
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function codePanel(file, note, lines, start = 1) { const e = el('panel code', `<div class="bar"><i></i><i></i><i></i><b>${file}</b><span>${note}</span></div><div class="body">${lines.map((l, i) => `<div class="ln ${l.ar ? 'ar' : ''}"><div class="hl"></div><u>${l.n ?? start + i}</u><p>${l.h}</p></div>`).join('')}</div>`); e.lines = [...e.querySelectorAll('.ln')]; return e; }
+function hl(p, i, a) { p.lines[i].querySelector('.hl').style.opacity = a; p.lines[i].style.color = a > .4 ? '#fff' : ''; }
+function lineY(p, i, o) { const l = p.lines[i]; return o.y + (l.offsetTop + l.offsetHeight / 2 - p.offsetHeight / 2) * (o.s ?? 1); }
+function uiPanel(w, h) { const e = el('panel ui', `<canvas width="${w}" height="${h}"></canvas>`); e.cv = e.querySelector('canvas'); e.g = e.cv.getContext('2d'); return e; }
+function drawFrame(p, img, sx, sy, sw, sh) { if (img) p.g.drawImage(img, sx, sy, sw, sh, 0, 0, p.cv.width, p.cv.height); }
+// beams
+const bgroup = document.getElementById('bgroup'); const beamPool = Array.from({ length: 5 }, () => { const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('fill', 'none'); p.setAttribute('stroke-width', 6); p.setAttribute('stroke-linecap', 'round'); const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('r', 12); bgroup.append(p, c); return { p, c }; }); let beamN = 0;
+function beam(x1, y1, x2, y2, a, t, color = '#67e8f9', bend = 160) { if (a <= .01 || beamN >= beamPool.length) return; const b = beamPool[beamN++]; const mx = (x1 + x2) / 2 + bend, my = (y1 + y2) / 2;
+  b.p.setAttribute('d', `M${x1} ${y1} Q${mx} ${my} ${x2} ${y2}`); b.p.setAttribute('stroke', color); b.p.setAttribute('stroke-dasharray', '18 16'); b.p.setAttribute('stroke-dashoffset', -t * 160); b.p.setAttribute('opacity', a * .9);
+  const u = (t * .9) % 1, q = 1 - u; b.c.setAttribute('cx', q * q * x1 + 2 * q * u * mx + u * u * x2); b.c.setAttribute('cy', q * q * y1 + 2 * q * u * my + u * u * y2); b.c.setAttribute('fill', '#fff'); b.c.setAttribute('opacity', a); }
+const ICON = { no: '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#fb7185" stroke-width="7"/><path d="M15 15 L49 49" stroke="#fb7185" stroke-width="7" stroke-linecap="round"/></svg>', ok: '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#34d399" stroke-width="7"/><path d="M19 33 L28 42 L46 23" fill="none" stroke="#34d399" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>', sos: '<svg viewBox="0 0 64 64"><path d="M32 6 L60 56 H4Z" fill="none" stroke="#fbbf24" stroke-width="7" stroke-linejoin="round"/><path d="M32 26 V40 M32 47 V49" stroke="#fbbf24" stroke-width="7" stroke-linecap="round"/></svg>' };
+
+// ---------- content (real code from the two projects) ----------
+const k = s => `<span class="c-k">${s}</span>`, st = s => `<span class="c-s">${esc(s)}</span>`, f = s => `<span class="c-f">${s}</span>`, v = s => `<span class="c-v">${s}</span>`, n = s => `<span class="c-n">${s}</span>`, cm = s => `<span class="c-c">${s}</span>`;
+const codeG = codePanel('sanad / src/lib/ai/gemini.ts', 'سند بيكلّم جوجل', [
+  { n: 4, h: `${k('const')} ${v('API')} = ${st('"https://generativelanguage.googleapis.com/v1beta"')};` },
+  { n: 82, h: `${k('const')} res = ${k('await')} ${f('fetch')}(\`\${API}/models/\${model}:${f('streamGenerateContent')}…\`, {` },
+  { n: 83, h: `  method: ${st('"POST"')},` },
+  { n: 84, h: `  headers: { …, ${st('"x-goog-api-key"')}: ${f('key')}() },` } ]);
+const codeK = codePanel('sanad / src/lib/ai/gemini.ts', 'المفتاح', [
+  { n: 84, h: `headers: { …, ${st('"x-goog-api-key"')}: ${f('key')}() },` },
+  { n: 8, h: `${k('function')} ${f('key')}() {` },
+  { n: 9, h: `  ${k('const')} k = process.env.${v('GEMINI_API_KEY')}?.${f('trim')}();` } ]);
+const codeN = codePanel('sanad / src/lib/notify.ts', 'تنبيه تيليجرام', [
+  { n: 4, h: cm('/** Sends a message to the pharmacist\'s Telegram. Never throws: alerts must not break a reply. */') },
+  { n: 13, h: `${k('const')} res = ${k('await')} ${f('fetch')}(\`https://api.telegram.org/bot\${token}/${f('sendMessage')}\`, {` },
+  { n: 16, h: `  body: JSON.${f('stringify')}({ chat_id: chat, text: text.${f('slice')}(${n('0')}, ${n('4000')}) }),` },
+  { n: 19, h: `${k('if')} (!res.ok) console.${f('error')}(\`Telegram send failed: \${res.status}\`);` },
+  { n: 23, h: `${k('return false')};  ${cm('// مفيش error بيوقف الرد')}` } ]);
+const codeC = codePanel('cockpit / app.py · ask.py', 'منصة البيانات بتكلّم Claude', [
+  { n: 2027, h: `${k('return')} anthropic.${f('Anthropic')}(api_key=…, max_retries=${n('1')}, timeout=${n('60.0')})` },
+  { n: 320, h: `response = client.beta.messages.${f('create')}(` },
+  { n: 321, h: `    model=${v('CLAUDE_MODEL')},` } ]);
+const codeT = codePanel('sanad · cockpit', 'السطرين', [
+  { n: 73, h: `${v('maxOutputTokens')}: options.maxTokens ?? ${n('2048')},  ${cm('// gemini.ts')}` },
+  { n: 322, h: `${v('max_tokens')}=${n('4000')},  ${cm('# ask.py')}` } ]);
+const phone = uiPanel(584, 1194), app = uiPanel(584, 760), uiAsk = uiPanel(900, 582);
+const allCode = [codeG, codeK, codeN, codeC, codeT], allUi = [phone, app, uiAsk];
+const win3 = el('panel card', `<div style="display:grid;gap:14px;min-width:420px"><div style="font-size:40px;color:#fde68a">المنيو</div>${['وجبة ١', 'وجبة ٢', 'مشروب'].map(s => `<div style="display:flex;justify-content:space-between;font-size:34px;font-weight:600;color:#cbd5e1"><span>${s}</span><i style="width:120px;height:14px;border-radius:7px;background:rgba(255,255,255,.25);display:block;margin-top:14px"></i></div>`).join('')}</div>`);
+const kitchen = el('panel card', `<div style="width:420px;height:240px;display:grid;place-items:center;font-size:48px;color:#94a3b8">المطبخ</div>`);
+const bag = el('abs', '<svg width="120" height="130" viewBox="0 0 60 66"><path d="M8 18 H52 L48 62 H12 Z" fill="#fbbf24" stroke="#fde68a" stroke-width="3" stroke-linejoin="round"/><path d="M20 18 V12 a10 10 0 0 1 20 0 V18" fill="none" stroke="#fde68a" stroke-width="4"/></svg>');
+const progA = el('card', '<span class="mono" style="color:#67e8f9">برنامجك</span>'), progB = el('card', '<span class="mono" style="color:#f0abfc">الخدمة</span>');
+const KEYSVG = '<svg width="110" height="110" viewBox="0 0 64 64"><circle cx="20" cy="32" r="13" fill="none" stroke="currentColor" stroke-width="6"/><path d="M33 32 H58 M48 32 V42 M56 32 V40" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>';
+const keyEl = el('keyic', KEYSVG);
+const okChip = el('chip', '<span style="color:#34d399">200 · تمام</span>'), errChip = el('chip', '<span style="color:#fb7185">فيه مشكلة</span>');
+const cards4 = ['عنوان', 'مفتاح', 'طلب', 'رد'].map((s, i) => el('card', `<span class="mono" style="color:${['#67e8f9', '#fbbf24', '#f0abfc', '#34d399'][i]};font-size:40px">${i + 1}</span>${s}`));
+const toks = ['إيه', 'أكتر', 'خمس', 'أص', 'ناف', 'بت', 'خسر', 'ني', '؟'].map((s, i) => el('chip', `<span style="font-family:Cairo;font-weight:900">${s}</span>`));
+const kk = {
+  ep: K('الحلقة <span class="mono">3</span>', 980, 150, 'grad'), h0: K('<span class="mono">API</span>', 1180, 110, 'grad'),
+  h1: K('خدمة برّه؟', 1250, 96, 'glow'), h2: K('<span class="mono">API</span>', 560, 280, 'grad'), h3: K('بتوصّل مشروعك بالعالم', 1640, 76, 'gold'),
+  a1: K('من غير ما تدخل المطبخ', 1500, 76, 'glow'), a2: K('بين برنامجين', 1640, 90, 'gold'),
+  g1: K('مش بيفكّر جوه السيرفر بتاعنا', 1130, 68, 'glow'), g2: K('<span class="mono">Endpoint</span>', 1180, 150, 'grad'), g3: K('«اكتبلي رد»', 1360, 100, 'gold'),
+  url: K('<span class="mono" style="font-size:40px">generativelanguage.googleapis.com</span>', 1500, 40, 'glow'),
+  k1: K('جاي مننا؟', 1150, 110, 'glow'), k2: K('<span class="mono">API Key</span>', 1150, 140, 'gold'), k3: K('من غيره… الشباك مش هيرد', 1560, 76, 'red'), k4: K('مكانه الـ <span class="mono">Backend</span> بس', 1560, 84, 'gold'), k5: K('اللي معاه المفتاح بيطلب على حسابك', 1700, 60, 'red'),
+  t1: K('سؤال فيه خطر', 330, 84, 'red'), t2: K('طلب دوا مش لاقيه', 330, 84, 'gold'), t3: K('للصيدلي في ثانية', 330, 90, 'glow'),
+  r1: K('<span class="mono">Response</span>', 330, 170, 'grad'), r2: K('ممكن تقع', 330, 130, 'red'), r3: K('الرد ما يقفش', 1700, 96, 'gold'),
+  c1: K('<span class="mono">Claude</span> · <span class="mono">Anthropic</span>', 1130, 76, 'grad'), c2: K('نفس الطريقة', 1050, 110, 'glow'),
+  x1: K('<span class="mono">Token</span>', 1230, 200, 'gold'), x2: K('وليه بتحاسبك عليه؟', 1460, 80, 'glow'), n0: K('الحلقة الجاية', 300, 110, 'grad'),
+  c1e: K('ذكاء اصطناعي', 930, 120), c2e: K('من الصفر', 1070, 150, 'gold'), c3e: K('خطوة بخطوة', 1540, 80, 'glow'),
+};
+const logoBig = el('abs', '<img src="assets/logo-avatar.png" style="width:640px;height:640px;border-radius:50%;display:block">');
+const tGoogle = el('tag', '<span class="mono">Google · Gemini</span>'), tTele = el('tag vio', '<span class="mono">Telegram</span>'), tGem = el('chip', 'Gemini'), tTel = el('chip', 'Telegram');
+const roadNames = ['LLM و Prompt', 'Frontend و Backend', 'Database', 'API', 'Token و Context']; const rsteps = roadNames.map((s, i) => { const e = el('rstep' + (i <= 3 ? ' done' : ' on'), `<i>${i}</i><span style="direction:ltr">${s}</span>`); e.style.top = (520 + i * 118) + 'px'; return e; });
+const road = document.getElementById('road'); for (let i = 0; i < 10; i++) road.appendChild(Object.assign(document.createElement('i'), { className: i === 3 ? 'on' : '' }));
+const packet = el('abs', '<div style="width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 30px 12px #67e8f9"></div>');
+const reply = el('abs', '<div style="width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 30px 12px #34d399"></div>');
+
+window.render = function (t) {
+  const si = S.findLastIndex(s => t >= s - .001), sc = si < 0 ? 0 : si, lt = t - S[sc];
+  beamN = 0; beamPool.forEach(b => { b.p.setAttribute('opacity', 0); b.c.setAttribute('opacity', 0); });
+  let srvP = [540, 1400, 0, 1], ptP = [540, 900, 0, 'open'], fenceA = 0, fenceAt = null, flash = 0, hud = 0, pk = null, rp = null, kp = null;
+  camera.position.set(Math.sin(t * .21) * .5, Math.cos(t * .17) * .4, 10); camera.lookAt(0, 0, 0);
+  for (const m of floaters) { m.rotation.set(m.userData.rx * t, m.userData.ry * t, 0); m.position.y = m.userData.y + Math.sin(t * .5 + m.userData.ph) * .6; }
+  const sway = (a, b = 0) => Math.sin(t * .6 + b) * a;
+  const st8 = new Map(); allCode.concat(allUi, [win3, kitchen]).forEach(p => st8.set(p, { op: 0 }));
+  const tg = new Map([tGoogle, tTele].map(e => [e, null]));
+  const tagAt = (e, x, y, a) => put(e, Math.min(1, a), `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${.5 + .5 * back(clamp(a))})`);
+  const at = (e, x, y, a, extra = '') => put(e, Math.min(1, Math.max(0, a)), `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${.6 + .4 * Math.min(1, Math.max(0, a))}) ${extra}`);
+  allCode.forEach(p => p.lines.forEach((l, i) => hl(p, i, 0)));
+  const arc = (x1, y1, x2, y2, u, h = 120) => [lerp(x1, x2, eio(u)), lerp(y1, y2, eio(u)) - Math.sin(u * Math.PI) * h];
+  if (sc >= 1 && sc <= 7) hud = Math.min(eo(pr(t, S[1], S[1] + .6)), 1 - pr(t, S[8] - .5, S[8]));
+
+  // ===== S1 hook: continues from episode 2's last image =====
+  if (sc === 0) { const a = back(pr(t, .2, 1.0)), out = eio(pr(t, 1.6, 2.3));
+    put(logoBig, a > 0 ? 1 - out : 0, `translate(220px, ${lerp(250, 60, out)}px) scale(${a * lerp(1, .5, out)}) rotate(${(1 - eo(pr(t, .2, 1.2))) * -40}deg)`);
+    show(kk.ep, t, .7, 2.4, 'zoom'); show(kk.h0, t, 1.1, 2.4, 'rise'); hud = eo(pr(t, 2.2, 2.8));
+    const ex = eio(pr(t, S[1] - .5, S[1]));
+    srvP = [540, 1000, back(pr(lt, 1.6, 2.3)) * .8 * (1 - ex), 1];
+    show(kk.h1, t, V(0, 2.9), V(0, 7.0), 'rise');
+    [[tGem, 4.7, 200], [tTel, 5.6, 880]].forEach(([e, x, xx]) => { const a2 = back(pr(lt, x, x + .5)); const m = eio(pr(lt, 8.6, 9.6)); at(e, lerp(xx, xx < 540 ? 300 : 780, m), lerp(1000, 640, m), a2 * (1 - ex)); });
+    show(kk.h2, t, V(0, 8.0), V(0, 9.4), 'slam');
+    ptP = [540, 680, back(pr(lt, 9.0, 9.7)) * .75 * (1 - ex), 'open'];
+    beam(540, 900, 540, 760, win(lt, 9.3, 11.1), t, '#67e8f9', 0);
+    show(kk.h3, t, V(0, 9.5), S[1] - .2, 'wipe');
+  } else { put(logoBig, 0); [kk.ep, kk.h0, kk.h1, kk.h2, kk.h3].forEach(e => put(e, 0)); put(tGem, 0); put(tTel, 0); }
+
+  // ===== S2 analogy: the drive-through window =====
+  if (sc === 1) { const ex = eio(pr(t, S[2] - .5, S[2])), morph = eio(pr(lt, 9.4, 10.4));
+    st8.set(win3, { x: 780, y: 760, s: back(pr(lt, .2, .9)) * (1 - morph), ry: -12 + sway(3), op: 1 - morph });
+    st8.set(kitchen, { x: 300, y: 1180, s: back(pr(lt, 5.9, 6.6)) * (1 - morph), ry: 14 + sway(3, 1), op: (1 - morph), blur: 2 + 8 * eo(pr(lt, 6.6, 7.6)) });
+    if (lt > 3.5 && lt < 4.5) pk = arc(900, 1500, 780, 900, pr(lt, 3.5, 4.5));
+    const bg = pr(lt, 4.7, 5.7); put(bag, bg > 0 && bg < 1.5 && lt < 9.4 ? 1 : 0, `translate(${lerp(780, 860, eio(bg)) - 60}px, ${lerp(900, 1480, eio(bg)) - 65}px) scale(${.6 + .4 * eo(bg)})`);
+    show(kk.a1, t, V(1, 6.0), V(1, 9.3), 'rise');
+    ptP = [540, 900, back(pr(lt, 9.6, 10.3)) * .8 * (1 - ex), 'open'];
+    at(progA, 180, 900, back(pr(lt, 11.9, 12.4)) * (1 - ex)); at(progB, 900, 900, back(pr(lt, 12.3, 12.8)) * (1 - ex));
+    if (lt > 12.3 && lt < 13.6) { const u = (lt - 12.3) % 1.1 / 1.1; pk = [lerp(260, 820, u), 900]; }
+    show(kk.a2, t, V(1, 11.8), S[2] - .3, 'zoom');
+  } else { put(kk.a1, 0); put(kk.a2, 0); put(bag, 0); put(progA, 0); put(progB, 0); }
+
+  // ===== S3 gemini: address + endpoint =====
+  if (sc === 2) { const inn = eo(pr(lt, 0, .8)), ex = eio(pr(t, S[3] - .5, S[3]));
+    const oG = { x: 540, y: 540 - (1 - inn) * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: 1 }; st8.set(codeG, oG);
+    show(kk.g1, t, V(2, 1.3), V(2, 3.8), 'rise');
+    srvP = [230, 1000, back(pr(lt, 3.8, 4.5)) * .65 * (1 - ex), 1]; ptP = [850, 1000, back(pr(lt, 5.8, 6.5)) * .7 * (1 - ex), 'open'];
+    tg.set(tGoogle, [850, 1280, win(lt, 6.4, 13.4)]);
+    if (lt > 5.4 && lt < 6.7) pk = arc(230, 1000, 850, 1000, pr(lt, 5.4, 6.7));
+    hl(codeG, 0, win(lt, 7.0, 9.6)); beam(980, lineY(codeG, 0, oG), 850, 900, win(lt, 7.0, 9.6), t, '#fbbf24', 120);
+    show(kk.url, t, V(2, 7.1), V(2, 9.7), 'wipe');
+    hl(codeG, 1, win(lt, 9.6, 13.4)); show(kk.g2, t, V(2, 10.5), V(2, 12.2), 'slam'); show(kk.g3, t, V(2, 12.2), S[3] - .3, 'zoom');
+    if (ex > 0) st8.set(codeG, { ...oG, y: oG.y - ex * 900 });
+  } else [kk.g1, kk.g2, kk.g3, kk.url].forEach(e => put(e, 0));
+
+  // ===== S4 key =====
+  if (sc === 3) { const inn = eo(pr(lt, 0, .8)), ex = eio(pr(t, S[4] - .5, S[4]));
+    const oK = { x: 540, y: 520 - (1 - inn) * 900 - ex * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: 1 }; st8.set(codeK, oK);
+    show(kk.k1, t, V(3, .9), V(3, 3.0), 'rise');
+    const noKey = lt > 7.9 && lt < 9.9; srvP = [230, 1000, .65 * (1 - eio(pr(lt, 9.8, 10.6))) + .9 * eio(pr(lt, 10.6, 11.4)) * 0, 1];
+    ptP = [850, 1000, .7 * (1 - eio(pr(lt, 9.8, 10.6))), noKey ? 'closed' : 'open'];
+    hl(codeK, 0, win(lt, 3.4, 7.9)); show(kk.k2, t, V(3, 5.5), V(3, 7.9), 'slam');
+    if (lt > 5.6 && lt < 7.6) { const u = pr(lt, 5.8, 7.4); pk = arc(230, 1000, 850, 1000, u); kp = [pk[0], pk[1] - 80, 1, '#fbbf24']; }
+    if (noKey) { const u = pr(lt, 8.0, 9.6); const d = u < .5 ? eio(u * 2) : 1 - eio((u - .5) * 2); pk = [lerp(230, 760, d), 1000 - Math.sin(d * Math.PI) * 60]; }
+    show(kk.k3, t, V(3, 7.9), V(3, 9.8), 'rise');
+    const home = eio(pr(lt, 11.2, 12.4)); srvP = lt > 10.4 ? [540, 1050, back(pr(lt, 10.4, 11.1)) * .95 * (1 - ex), 1] : srvP;
+    if (lt > 10.6) kp = [lerp(900, 540, home), lerp(700, 1050, home), Math.min(1, back(pr(lt, 10.6, 11.2))) * (1 - ex), home > .9 ? '#34d399' : '#fbbf24'];
+    fenceA = eo(pr(lt, 12.4, 13.0)) * (1 - ex); fenceAt = [540, 1050, lerp(2.4, 1.15, eo(pr(lt, 12.4, 13.1)))];
+    hl(codeK, 2, win(lt, 12.0, 14.4)); show(kk.k4, t, V(3, 12.6), V(3, 14.3), 'zoom'); show(kk.k5, t, V(3, 14.4), S[4] - .3, 'rise');
+  } else [kk.k1, kk.k2, kk.k3, kk.k4, kk.k5].forEach(e => put(e, 0));
+
+  // ===== S5 telegram =====
+  if (sc === 4) { const ex = eio(pr(t, S[5] - .5, S[5]));
+    show(kk.t1, t, V(4, 2.4), V(4, 3.9), 'slam'); show(kk.t2, t, V(4, 3.9), V(4, 5.6), 'slam');
+    const oN = { x: 540, y: 520 - (1 - eo(pr(lt, 5.4, 6.1))) * 900 - ex * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: pr(lt, 5.4, 5.5) }; st8.set(codeN, oN);
+    hl(codeN, 1, win(lt, 6.6, 12.0)); hl(codeN, 2, win(lt, 8.2, 12.0));
+    srvP = [200, 1100, back(pr(lt, 5.6, 6.3)) * .55 * (1 - ex), 1]; ptP = [540, 1100, back(pr(lt, 6.7, 7.3)) * .55 * (1 - ex), 'open']; tg.set(tTele, [540, 1330, win(lt, 7.0, 12.0)]);
+    if (lt > 8.2 && lt < 9.5) pk = arc(200, 1100, 540, 1100, pr(lt, 8.2, 9.0)); if (lt > 9.0 && lt < 9.7) pk = arc(540, 1100, 870, 1250, pr(lt, 9.0, 9.7));
+    const fi = lt < 9.6 ? 0 : Math.min(364, Math.floor((lt - 9.6) * 60)); drawFrame(phone, tgF[fi], 0, 0, 584, 1194);
+    st8.set(phone, { x: 870, y: 1430 + (1 - back(pr(lt, 8.6, 9.4))) * 900, s: .55, ry: -10 + sway(3), rx: 3, op: lt > 8.6 ? 1 - ex : 0 });
+    show(kk.t3, t, V(4, 9.6), S[5] - .3, 'zoom');
+  } else [kk.t1, kk.t2, kk.t3].forEach(e => put(e, 0));
+
+  // ===== S6 response + resilience =====
+  if (sc === 5) { const ex = eio(pr(t, S[6] - .5, S[6]));
+    show(kk.r1, t, V(5, 2.1), V(5, 5.0), 'slam');
+    srvP = [200, 1000, .6 * (1 - ex), 1]; const down = lt > 10.8;
+    ptP = [870, 1000, .6 * (1 - ex) * (down ? 1 - .25 * eio(pr(lt, 10.8, 11.4)) : 1), down ? 'off' : 'open'];
+    if (lt > .2 && lt < 1.4) pk = arc(200, 1000, 870, 1000, pr(lt, .2, 1.2));
+    if (lt > 1.4 && lt < 2.6) rp = arc(870, 1000, 200, 1000, pr(lt, 1.4, 2.4), -120);
+    at(okChip, 540, 1250, back(pr(lt, 3.1, 3.6)) * (1 - eio(pr(lt, 5.1, 5.6)))); at(errChip, 540, 1380, back(pr(lt, 4.4, 4.9)) * (1 - eio(pr(lt, 5.1, 5.6))));
+    show(kk.r2, t, V(5, 10.7), V(5, 11.6), 'slam');
+    const oN = { x: 540, y: 520 - (1 - eo(pr(lt, 11.3, 12.0))) * 900 - ex * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: pr(lt, 11.3, 11.4) }; st8.set(codeN, oN);
+    hl(codeN, 0, win(lt, 11.8, 16.4)); hl(codeN, 4, win(lt, 13.3, 16.4));
+    drawFrame(app, sanadF[147], 0, 80, 584, 760); st8.set(app, { x: 540, y: 1430 + (1 - back(pr(lt, 13.0, 13.7))) * 900, s: .62, ry: sway(3), rx: 3, op: lt > 13 ? 1 - ex : 0 });
+    if (lt > 13.5 && lt < 15.6) rp = arc(200, 1000, 540, 1300, pr(lt, 13.6, 15.2), 60);
+    if (lt > 13.3 && lt < 14.6) { const u = pr(lt, 13.3, 14.4); const d = u < .5 ? eio(u * 2) : 1 - eio((u - .5) * 2); pk = [lerp(200, 790, d), 1000]; }
+    show(kk.r3, t, V(5, 14.3), S[6] - .3, 'zoom');
+    beam(200, 1000, 540, 1250, win(lt, 13.6, 16.3) * .6, t, '#34d399', 60);
+  } else { [kk.r1, kk.r2, kk.r3].forEach(e => put(e, 0)); put(okChip, 0); put(errChip, 0); }
+
+  // ===== S7 claude + recap of the four parts =====
+  if (sc === 6) { const inn = eo(pr(lt, 0, .8)), ex = eio(pr(t, S[7] - .5, S[7]));
+    const oC = { x: 540, y: 540 - (1 - inn) * 900 - ex * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: 1 - eio(pr(lt, 8.2, 8.9)) }; st8.set(codeC, oC);
+    hl(codeC, 0, win(lt, 3.9, 8.4)); hl(codeC, 1, win(lt, 5.5, 8.4)); hl(codeC, 2, win(lt, 5.5, 8.4));
+    show(kk.c1, t, V(6, 4.4), V(6, 8.3), 'wipe');
+    const fi = Math.min(215, 95 + Math.floor(Math.max(0, lt - 1) * 25)); drawFrame(uiAsk, askF[fi], 0, 0, 900, 582);
+    st8.set(uiAsk, { x: 540, y: 1330 + (1 - eo(pr(lt, .4, 1.2))) * 900, s: 1.02, ry: sway(3, 2), rx: 4, op: 1 - eio(pr(lt, 8.2, 8.9)) });
+    show(kk.c2, t, V(6, 8.6), V(6, 12.3), 'slam');
+    cards4.forEach((e, i) => { const a = back(pr(lt, [12.5, 13.3, 14.1, 14.7][i], [12.5, 13.3, 14.1, 14.7][i] + .5)) * (1 - ex); at(e, 540, 980 + i * 150, a); });
+  } else { [kk.c1, kk.c2].forEach(e => put(e, 0)); cards4.forEach(e => put(e, 0)); }
+
+  // ===== S8 next: token =====
+  if (sc === 7) { const inn = eo(pr(lt, 0, .8)), off = eio(pr(lt, 9.4, 10.0));
+    const oT = { x: 540, y: 600 - (1 - inn) * 900, s: 1, rx: sway(2), ry: sway(3, 1), op: 1 - off }; st8.set(codeT, oT);
+    hl(codeT, 0, win(lt, 2.0, 4.1)); hl(codeT, 1, win(lt, 4.5, 6.6));
+    show(kk.x1, t, V(7, 6.6), V(7, 9.6), 'slam'); show(kk.x2, t, V(7, 8.0), V(7, 9.6), 'rise');
+    let tx = 1020, ty = 940; toks.forEach((e, i) => { const a = back(pr(lt, 6.9 + i * .1, 7.4 + i * .1)) * (1 - off); const w = e.offsetWidth || 90; if (tx - w < 60) { tx = 1020; ty += 120; } const x = tx - w / 2; tx -= w + 14; at(e, x, ty + Math.sin(t * 2 + i) * 8, a); });
+    show(kk.n0, t, V(7, 9.9), S[8] - .3, 'zoom');
+    rsteps.forEach((e, i) => { const a = back(pr(lt, 10.0 + i * .08, 10.5 + i * .08)) * (1 - eio(pr(t, S[8] - .5, S[8]))); put(e, Math.min(1, a), `translateX(${(1 - Math.min(1, a)) * 200}px) scale(${i === 4 ? 1.12 + Math.sin(t * 5) * .03 : 1})`); });
+  } else { [kk.x1, kk.x2, kk.n0].forEach(e => put(e, 0)); toks.forEach(e => put(e, 0)); rsteps.forEach(e => put(e, 0)); }
+
+  // ===== S9 CTA =====
+  if (sc === 8) { const a = back(pr(lt, 0, .8)); flash = (1 - pr(lt, 0, .5)) * .8;
+    put(logoBig, Math.min(1, a), `translate(220px, 220px) scale(${a * (1 + Math.sin(t * 3) * .015)})`);
+    show(kk.c1e, t, V(8, .9), TOTAL + 5, 'rise'); show(kk.c2e, t, V(8, 1.5), TOTAL + 5, 'zoom'); show(kk.c3e, t, V(8, 3.1), TOTAL + 5, 'wipe');
+    const b = back(pr(lt, .25, .9)); const btn = document.getElementById('btn'); btn.style.opacity = Math.min(1, b); btn.style.transform = `scale(${b * (1 + Math.sin(t * 6) * .03)})`;
+  } else { if (sc !== 0) put(logoBig, 0); [kk.c1e, kk.c2e, kk.c3e].forEach(e => put(e, 0)); document.getElementById('btn').style.opacity = 0; }
+
+  allCode.concat(allUi, [win3, kitchen]).forEach(p => panel(p, st8.get(p)));
+  for (const [e, v2] of tg) v2 ? tagAt(e, v2[0], v2[1], v2[2]) : put(e, 0);
+  put(packet, pk ? 1 : 0, pk ? `translate(${pk[0] - 17}px, ${pk[1] - 17}px) scale(${1 + Math.sin(t * 14) * .15})` : '');
+  put(reply, rp ? 1 : 0, rp ? `translate(${rp[0] - 17}px, ${rp[1] - 17}px) scale(${1 + Math.sin(t * 14) * .15})` : '');
+  put(keyEl, kp ? kp[2] : 0, kp ? `translate(${kp[0] - 55}px, ${kp[1] - 55}px) rotate(-20deg)` : '', kp ? { color: kp[3], filter: `drop-shadow(0 0 18px ${kp[3]})` } : null);
+  setSrv(srvP[0], srvP[1], srvP[2], t, srvP[3]); setPortal(ptP[0], ptP[1], ptP[2], t, ptP[3]); setDb(0, 0, 0, t); setCore(0, 0, 0, t);
+  fence.visible = fenceA > .01; fence.material.opacity = fenceA; if (fenceAt) { fence.position.set((fenceAt[0] - 540) * PX, -(fenceAt[1] - 960) * PX, 0); fence.scale.setScalar(fenceAt[2]); } fence.rotation.z = t * .3;
+  document.getElementById('split').style.opacity = 0; document.getElementById('dark').style.opacity = 0;
+  document.getElementById('hud').style.opacity = hud; document.getElementById('flash').style.opacity = flash;
+  document.body.style.opacity = 1 - pr(t, TOTAL - .8, TOTAL - .05);
+  composer.render();
+};
+window.READY = true;
+</script>
+</body>
+</html>
