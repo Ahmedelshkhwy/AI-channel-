@@ -32,10 +32,10 @@
 | 0 | LLM و Prompt (من كود سند ومنصة البيانات) | **اتعملت وانبعتت** |
 | 1 | Frontend و Backend | **اتعملت** (الكود: `episodes/ep1/film.html` و`audio.py`، بتتشغّل من جوه `template/` بنفس الخطوات) |
 | 2 | Database | **اتعملت** (`episodes/ep2/`: الفتح بيكمّل من سؤال آخر الحلقة 1، والقراءة من سجل الأدمن مش من صفحة المستخدم) |
-| 3 | API وAPI Key وEndpoint | جاية |
-| 4 | Webhook | جاية |
+| 3 | API وAPI Key وEndpoint | **السكريبت جاهز** (`docs/episode-3-script.md`) |
+| 4 | Token وContext Window (اتقدّمت لأن الحلقة 3 بتلمّح لها من الكود: `maxOutputTokens`، `max_tokens`) | جاية |
 | 5 | Automation (تيليجرام وواتساب) | جاية |
-| 6 | Token وContext Window | جاية |
+| 6 | Webhook (**مفيش Webhook في المشروعين لحد دلوقتي**؛ محتاج يتبني الأول، زي رد الصيدلي من تيليجرام يرجع لسند) | مؤجلة |
 | 7 | RAG وEmbeddings (سند عنده Embeddings فعلاً في `gemini.ts`) | جاية |
 | 8 | Tools وFunction Calling وAgent (`QUERY_TOOL` في `ask.py`) | جاية |
 | 9 | MCP والـ Connectors | جاية |
